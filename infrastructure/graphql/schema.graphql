@@ -1,0 +1,393 @@
+# infrastructure/graphql/schema.graphql
+
+# ==========================================
+# TYPES
+# ==========================================
+
+type Investor {
+  id: ID!
+  email: String!
+  firstName: String!
+  lastName: String!
+  phone: String
+  totalInvested: Float!
+  portfolioValue: Float!
+  totalROI: Float!
+  investments: [Investment!]
+  transactions: [Transaction!]
+  documents: [Document!]
+  notifications: [Notification!]
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Property {
+  id: ID!
+  address: String!
+  postcode: String!
+  propertyType: PropertyType!
+  purchasePrice: Float!
+  currentValuation: Float!
+  status: PropertyStatus!
+  images: [String!]
+  acquisitionDate: AWSDate!
+  totalInvested: Float
+  investments: [Investment!]
+  developments: [Development!]
+  documents: [Document!]
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Investment {
+  id: ID!
+  investorId: ID!
+  investor: Investor
+  propertyId: ID!
+  property: Property
+  investmentAmount: Float!
+  equityPercentage: Float!
+  investmentDate: AWSDate!
+  currentValue: Float!
+  roi: Float!
+  status: InvestmentStatus!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Transaction {
+  id: ID!
+  investorId: ID!
+  investor: Investor
+  propertyId: ID
+  property: Property
+  type: TransactionType!
+  amount: Float!
+  description: String!
+  date: AWSDate!
+  reference: String
+  createdAt: AWSDateTime!
+}
+
+type Document {
+  id: ID!
+  investorId: ID
+  investor: Investor
+  propertyId: ID
+  property: Property
+  title: String!
+  description: String
+  fileKey: String!
+  fileType: String!
+  fileSize: Int!
+  uploadDate: AWSDateTime!
+  category: DocumentCategory!
+  url: String # Presigned URL (generated on request)
+}
+
+type Development {
+  id: ID!
+  propertyId: ID!
+  property: Property
+  title: String!
+  description: String!
+  status: String!
+  updateDate: AWSDateTime!
+  images: [String!]
+  createdAt: AWSDateTime!
+}
+
+type Notification {
+  id: ID!
+  investorId: ID!
+  investor: Investor
+  title: String!
+  message: String!
+  type: NotificationType!
+  isRead: Boolean!
+  createdAt: AWSDateTime!
+  link: String
+}
+
+# ==========================================
+# ENUMS
+# ==========================================
+
+enum PropertyType {
+  RESIDENTIAL
+  COMMERCIAL
+  MIXED_USE
+  LAND
+}
+
+enum PropertyStatus {
+  ACQUISITION
+  DEVELOPMENT
+  COMPLETED
+  SOLD
+}
+
+enum InvestmentStatus {
+  ACTIVE
+  COMPLETED
+  PENDING
+}
+
+enum TransactionType {
+  INVESTMENT
+  DIVIDEND
+  PROFIT_SHARE
+  WITHDRAWAL
+  FEE
+}
+
+enum DocumentCategory {
+  CONTRACT
+  REPORT
+  CERTIFICATE
+  INVOICE
+  VALUATION
+  OTHER
+}
+
+enum NotificationType {
+  INVESTMENT_UPDATE
+  DOCUMENT_UPLOADED
+  PAYMENT_RECEIVED
+  PROPERTY_UPDATE
+  SYSTEM
+}
+
+# ==========================================
+# INPUTS
+# ==========================================
+
+input CreateInvestorInput {
+  email: String!
+  firstName: String!
+  lastName: String!
+  phone: String
+  temporaryPassword: String!
+}
+
+input UpdateInvestorInput {
+  id: ID!
+  firstName: String
+  lastName: String
+  phone: String
+}
+
+input CreatePropertyInput {
+  address: String!
+  postcode: String!
+  propertyType: PropertyType!
+  purchasePrice: Float!
+  currentValuation: Float!
+  status: PropertyStatus!
+  images: [String!]
+  acquisitionDate: AWSDate!
+}
+
+input UpdatePropertyInput {
+  id: ID!
+  currentValuation: Float
+  status: PropertyStatus
+  images: [String!]
+}
+
+input CreateInvestmentInput {
+  investorId: ID!
+  propertyId: ID!
+  investmentAmount: Float!
+  equityPercentage: Float!
+}
+
+input CreateTransactionInput {
+  investorId: ID!
+  propertyId: ID
+  type: TransactionType!
+  amount: Float!
+  description: String!
+  date: AWSDate
+  reference: String
+}
+
+input UploadDocumentInput {
+  investorId: ID
+  propertyId: ID
+  title: String!
+  description: String
+  fileKey: String!
+  fileType: String!
+  fileSize: Int!
+  category: DocumentCategory!
+}
+
+input CreateDevelopmentInput {
+  propertyId: ID!
+  title: String!
+  description: String!
+  status: String!
+  images: [String!]
+}
+
+input SendNotificationInput {
+  investorId: ID
+  investorIds: [ID!]
+  title: String!
+  message: String!
+  type: NotificationType!
+  link: String
+}
+
+# ==========================================
+# PAGINATION
+# ==========================================
+
+type InvestmentConnection {
+  items: [Investment!]!
+  nextToken: String
+}
+
+type TransactionConnection {
+  items: [Transaction!]!
+  nextToken: String
+}
+
+type DocumentConnection {
+  items: [Document!]!
+  nextToken: String
+}
+
+type NotificationConnection {
+  items: [Notification!]!
+  nextToken: String
+}
+
+type DevelopmentConnection {
+  items: [Development!]!
+  nextToken: String
+}
+
+# ==========================================
+# QUERIES
+# ==========================================
+
+type Query {
+  # Investors
+  getInvestor(id: ID!): Investor
+  listInvestors(limit: Int, nextToken: String): [Investor!]!
+  
+  # Properties
+  getProperty(id: ID!): Property
+  listProperties(limit: Int, nextToken: String): [Property!]!
+  listPropertiesByStatus(status: PropertyStatus!, limit: Int, nextToken: String): [Property!]!
+  
+  # Investments
+  getInvestment(id: ID!): Investment
+  listInvestmentsByInvestor(investorId: ID!, limit: Int, nextToken: String): InvestmentConnection!
+  listInvestmentsByProperty(propertyId: ID!, limit: Int, nextToken: String): InvestmentConnection!
+  
+  # Transactions
+  getTransaction(id: ID!): Transaction
+  listTransactionsByInvestor(investorId: ID!, limit: Int, nextToken: String): TransactionConnection!
+  listTransactionsByType(type: TransactionType!, limit: Int, nextToken: String): TransactionConnection!
+  
+  # Documents
+  getDocument(id: ID!): Document
+  listDocumentsByInvestor(investorId: ID!, limit: Int, nextToken: String): DocumentConnection!
+  listDocumentsByProperty(propertyId: ID!, limit: Int, nextToken: String): DocumentConnection!
+  generateDocumentUrl(id: ID!): String! # Returns presigned URL
+  
+  # Notifications
+  listNotificationsByInvestor(investorId: ID!, limit: Int, nextToken: String): NotificationConnection!
+  
+  # Developments
+  listDevelopmentsByProperty(propertyId: ID!, limit: Int, nextToken: String): DevelopmentConnection!
+  
+  # Dashboard Stats
+  getInvestorDashboard(investorId: ID!): InvestorDashboard!
+  getAdminDashboard: AdminDashboard!
+}
+
+# ==========================================
+# MUTATIONS
+# ==========================================
+
+type Mutation {
+  # Investors
+  createInvestor(input: CreateInvestorInput!): Investor!
+  updateInvestor(input: UpdateInvestorInput!): Investor!
+  
+  # Properties
+  createProperty(input: CreatePropertyInput!): Property!
+  updateProperty(input: UpdatePropertyInput!): Property!
+  
+  # Investments
+  createInvestment(input: CreateInvestmentInput!): Investment!
+  
+  # Transactions
+  createTransaction(input: CreateTransactionInput!): Transaction!
+  
+  # Documents
+  uploadDocument(input: UploadDocumentInput!): Document!
+  
+  # Developments
+  createDevelopment(input: CreateDevelopmentInput!): Development!
+  
+  # Notifications
+  sendNotification(input: SendNotificationInput!): Notification!
+  markNotificationRead(id: ID!): Notification!
+}
+
+# ==========================================
+# SUBSCRIPTIONS (Real-time updates)
+# ==========================================
+
+type Subscription {
+  onInvestmentCreated(investorId: ID!): Investment
+    @aws_subscribe(mutations: ["createInvestment"])
+  
+  onNotificationCreated(investorId: ID!): Notification
+    @aws_subscribe(mutations: ["sendNotification"])
+  
+  onDevelopmentCreated(propertyId: ID!): Development
+    @aws_subscribe(mutations: ["createDevelopment"])
+}
+
+# ==========================================
+# DASHBOARD TYPES
+# ==========================================
+
+type InvestorDashboard {
+  totalInvested: Float!
+  portfolioValue: Float!
+  totalROI: Float!
+  activeInvestments: Int!
+  recentTransactions: [Transaction!]!
+  unreadNotifications: Int!
+  properties: [Property!]!
+}
+
+type AdminDashboard {
+  totalInvestors: Int!
+  totalProperties: Int!
+  totalCapitalRaised: Float!
+  totalPortfolioValue: Float!
+  averageROI: Float!
+  recentInvestments: [Investment!]!
+  propertiesByStatus: [PropertyStatusCount!]!
+}
+
+type PropertyStatusCount {
+  status: PropertyStatus!
+  count: Int!
+}
+
+# ==========================================
+# AUTHORIZATION RULES
+# ==========================================
+
+# Investors can only see their own data
+# Admins can see everything
+# These are enforced in Lambda resolvers
