@@ -1,12 +1,12 @@
 // lambda/notifications/send-email/index.ts
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
-import { docClient } from "../../shared/db/client";
-import { Logger } from "../../shared/utils/logger";
-import { validateRequired } from "../../shared/utils/validators";
-import { handleError, NotFoundError } from "../../shared/utils/errors";
+import { docClient } from "../../../shared/db/client";
+import { Logger } from "../../../shared/utils/logger";
+import { validateRequired } from "../../../shared/utils/validators";
+import { handleError } from "../../../shared/utils/errors";
 import { v4 as uuidv4 } from "uuid";
-import type { AppSyncEvent } from "../../shared/types";
+import type { AppSyncEvent } from "../../../shared/types";
 
 const logger = new Logger("SendNotification");
 const sesClient = new SESClient({ region: process.env.REGION });

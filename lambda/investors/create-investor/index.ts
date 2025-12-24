@@ -4,7 +4,7 @@ import {
   AdminCreateUserCommand,
   AdminSetUserPasswordCommand,
   AdminAddUserToGroupCommand,
-} from "@aws-sdkclient-cognito-identity-provider";
+} from "@aws-sdk/client-cognito-identity-provider";
 import { PutCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../../shared/db/client";
 import { Logger } from "../../shared/utils/logger";
