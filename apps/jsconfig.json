@@ -1,0 +1,13 @@
+// apps/jsconfig.json (optional, for IDE path hints)
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/shared/*": ["./shared/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/components/*": ["./components/*"]
+    },
+    "jsx": "react-jsx"
+  },
+  "exclude": ["node_modules", ".next"]
+}

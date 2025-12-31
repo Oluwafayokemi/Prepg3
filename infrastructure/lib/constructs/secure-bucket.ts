@@ -1,10 +1,15 @@
 // infrastructure/lib/constructs/secure-bucket.ts
-import * as cdk from 'aws-cdk-lib';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
-import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
-import { Construct } from 'constructs';
-import { S3, CLOUDFRONT, isProduction, getResourceName } from '../config/constants';
+import * as cdk from "aws-cdk-lib";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
+import { Construct } from "constructs";
+import {
+  S3,
+  CLOUDFRONT,
+  isProduction,
+  getResourceName,
+} from "../config/constants";
 
 export interface SecureBucketProps {
   /**
@@ -55,21 +60,21 @@ export class SecureBucket extends Construct {
   constructor(scope: Construct, id: string, props: SecureBucketProps) {
     super(scope, id);
 
-    const isProd = isProduction(props.environmentName);
+    const isLive = isProduction(props.environmentName);
     const bucketName = `${props.bucketName}-${props.environmentName}-${cdk.Aws.ACCOUNT_ID}`;
 
     // Determine removal policy
-    const removalPolicy = isProd 
-      ? cdk.RemovalPolicy.RETAIN 
+    const removalPolicy = isLive
+      ? cdk.RemovalPolicy.RETAIN
       : cdk.RemovalPolicy.DESTROY;
 
     // Auto-delete only allowed in non-production
-    const autoDeleteObjects = !isProd && (props.autoDeleteObjects ?? true);
+    const autoDeleteObjects = !isLive && (props.autoDeleteObjects ?? true);
 
     // Default lifecycle rules
     const defaultLifecycleRules: s3.LifecycleRule[] = [
       {
-        id: 'AbortIncompleteUploads',
+        id: "AbortIncompleteUploads",
         abortIncompleteMultipartUploadAfter: cdk.Duration.days(
           S3.LIFECYCLE_RULES.DELETE_INCOMPLETE_UPLOADS_DAYS
         ),
@@ -79,7 +84,7 @@ export class SecureBucket extends Construct {
 
     if (props.versioned) {
       defaultLifecycleRules.push({
-        id: 'DeleteOldVersions',
+        id: "DeleteOldVersions",
         noncurrentVersionExpiration: cdk.Duration.days(
           S3.LIFECYCLE_RULES.DELETE_OLD_VERSIONS_DAYS
         ),
@@ -88,7 +93,7 @@ export class SecureBucket extends Construct {
     }
 
     // Create bucket
-    this.bucket = new s3.Bucket(this, 'Bucket', {
+    this.bucket = new s3.Bucket(this, "Bucket", {
       bucketName,
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -103,47 +108,44 @@ export class SecureBucket extends Construct {
       ],
       removalPolicy,
       autoDeleteObjects,
-      serverAccessLogsPrefix: isProd ? 'access-logs/' : undefined,
-      intelligentTieringConfigurations: isProd ? [
-        {
-          name: 'IntelligentTiering',
-          archiveAccessTierTime: cdk.Duration.days(90),
-          deepArchiveAccessTierTime: cdk.Duration.days(180),
-        },
-      ] : undefined,
+      serverAccessLogsPrefix: isLive ? "access-logs/" : undefined,
+      intelligentTieringConfigurations: isLive
+        ? [
+            {
+              name: "IntelligentTiering",
+              archiveAccessTierTime: cdk.Duration.days(90),
+              deepArchiveAccessTierTime: cdk.Duration.days(180),
+            },
+          ]
+        : undefined,
     });
 
     // Add tags
-    cdk.Tags.of(this.bucket).add('Name', bucketName);
-    cdk.Tags.of(this.bucket).add('Environment', props.environmentName);
-    cdk.Tags.of(this.bucket).add('Public', props.publicAccess ? 'Yes' : 'No');
+    cdk.Tags.of(this.bucket).add("Name", bucketName);
+    cdk.Tags.of(this.bucket).add("Environment", props.environmentName);
+    cdk.Tags.of(this.bucket).add("Public", props.publicAccess ? "Yes" : "No");
 
     // Create CloudFront distribution if public access is needed
     if (props.publicAccess) {
-      this.distribution = new cloudfront.Distribution(this, 'Distribution', {
+      this.distribution = new cloudfront.Distribution(this, "Distribution", {
         defaultBehavior: {
-          origin: new origins.S3Origin(this.bucket),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          origin: origins.S3BucketOrigin.withOriginAccessControl(this.bucket),
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
           cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
           compress: true,
         },
         priceClass: cloudfront.PriceClass.PRICE_CLASS_100, // EU and US
-        enableLogging: isProd,
-        logBucket: isProd ? new s3.Bucket(this, 'LogBucket', {
-          bucketName: `${bucketName}-logs`,
-          encryption: s3.BucketEncryption.S3_MANAGED,
-          blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-          removalPolicy,
-          autoDeleteObjects,
-        }) : undefined,
+        enableLogging: false,
+        logFilePrefix: 'cloudfront-logs/',
         comment: `${props.bucketName} CDN for ${props.environmentName}`,
         minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
       });
 
       // Output CloudFront URL
-      new cdk.CfnOutput(this, 'DistributionUrl', {
+      new cdk.CfnOutput(this, "DistributionUrl", {
         value: this.distribution.distributionDomainName,
         exportName: `PREPG3-${props.environmentName}-${props.bucketName}-CDN`,
         description: `CloudFront URL for ${props.bucketName}`,
@@ -151,14 +153,14 @@ export class SecureBucket extends Construct {
     }
 
     // Output bucket name
-    new cdk.CfnOutput(this, 'BucketName', {
+    new cdk.CfnOutput(this, "BucketName", {
       value: this.bucket.bucketName,
       exportName: `PREPG3-${props.environmentName}-${props.bucketName}-Bucket`,
       description: `Bucket name for ${props.bucketName}`,
     });
 
     // Output bucket ARN
-    new cdk.CfnOutput(this, 'BucketArn', {
+    new cdk.CfnOutput(this, "BucketArn", {
       value: this.bucket.bucketArn,
       exportName: `PREPG3-${props.environmentName}-${props.bucketName}-BucketArn`,
       description: `Bucket ARN for ${props.bucketName}`,
@@ -170,7 +172,7 @@ export class SecureBucket extends Construct {
    */
   public addGlacierTransition(days: number): void {
     this.bucket.addLifecycleRule({
-      id: 'TransitionToGlacier',
+      id: "TransitionToGlacier",
       transitions: [
         {
           storageClass: s3.StorageClass.GLACIER,
@@ -186,7 +188,7 @@ export class SecureBucket extends Construct {
    */
   public addExpirationRule(days: number, prefix?: string): void {
     this.bucket.addLifecycleRule({
-      id: `DeleteAfter${days}Days${prefix ? `-${prefix}` : ''}`,
+      id: `DeleteAfter${days}Days${prefix ? `-${prefix}` : ""}`,
       expiration: cdk.Duration.days(days),
       prefix,
       enabled: true,

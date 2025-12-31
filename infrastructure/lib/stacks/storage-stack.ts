@@ -23,7 +23,7 @@ export class StorageStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: StorageStackProps) {
     super(scope, id, props);
 
-    const isProd = props.environmentName === 'prod';
+    const isLive = props.environmentName === 'live';
 
     // Documents Bucket (Private)
     const documentsBucket = new SecureBucket(this, 'Documents', {
@@ -39,7 +39,7 @@ export class StorageStack extends cdk.Stack {
             s3.HttpMethods.POST,
             s3.HttpMethods.DELETE,
           ],
-          allowedOrigins: isProd
+          allowedOrigins: isLive
             ? [DOMAINS.PRODUCTION.INVESTOR, DOMAINS.PRODUCTION.ADMIN]
             : [DOMAINS.DEVELOPMENT.INVESTOR, DOMAINS.DEVELOPMENT.ADMIN],
           allowedHeaders: ['*'],
@@ -49,7 +49,7 @@ export class StorageStack extends cdk.Stack {
     });
 
     // Add Glacier transition for old documents (production only)
-    if (isProd) {
+    if (isLive) {
       documentsBucket.addGlacierTransition(30);
     }
 

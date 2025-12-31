@@ -26,7 +26,7 @@ export class MonitoringStack extends cdk.Stack {
     });
 
     // Subscribe email to alarms (only in production)
-    if (props.environmentName === 'prod') {
+    if (props.environmentName === 'live') {
       alarmTopic.addSubscription(
         new sns_subscriptions.EmailSubscription('alerts@prepg3.co.uk')
       );

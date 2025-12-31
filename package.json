@@ -5,30 +5,31 @@
   "workspaces": [
     "infrastructure",
     "apps/*",
-    "lambda/*/",
-    "shared"
+    "lambda/*/"
   ],
   "scripts": {
-    "cdk": "cd infrastructure && cdk",
-    "deploy:infra": "cd infrastructure && cdk deploy --all",
-    "deploy:infra:dev": "cd infrastructure && cdk deploy --all --context environment=dev",
-    "deploy:infra:prod": "cd infrastructure && cdk deploy --all --context environment=prod",
-    "synth": "cd infrastructure && cdk synth",
-    "diff": "cd infrastructure && cdk diff",
-    "destroy": "cd infrastructure && cdk destroy --all",
-    "dev:landing": "cd apps/landing && npm run dev",
-    "dev:investor": "cd apps/investor && npm run dev",
-    "dev:admin": "cd apps/admin && npm run dev",
-    "build:landing": "cd apps/landing && npm run build",
-    "build:investor": "cd apps/investor && npm run build",
-    "build:admin": "cd apps/admin && npm run build",
-    "test": "npm run test --workspaces",
-    "lint": "npm run lint --workspaces",
-    "setup": "npm install && npm run bootstrap",
-    "bootstrap": "cd infrastructure && cdk bootstrap"
-  },
-  "devDependencies": {
-    "typescript": "^5.3.0",
-    "@types/node": "^20.0.0"
+    "dev:landing": "cd apps && npm run dev:landing",
+    "dev:investor": "cd apps && npm run dev:investor",
+    "dev:admin": "cd apps && npm run dev:admin",
+    "dev:all": "cd apps && npm run dev:all",
+    
+    "build:landing": "cd apps && npm run build:landing",
+    "build:investor": "cd apps && npm run build:investor",
+    "build:admin": "cd apps && npm run build:admin",
+    "build:all": "cd apps && npm run build:all",
+    
+    "start:landing": "cd apps && npm run start:landing",
+    "start:investor": "cd apps && npm run start:investor",
+    "start:admin": "cd apps && npm run start:admin",
+    
+    "cdk:deploy": "cd infrastructure && npm run deploy",
+    "cdk:destroy": "cd infrastructure && npm run destroy",
+    "cdk:diff": "cd infrastructure && npm run diff",
+    
+    "export-config": "cd infrastructure && ts-node ../scripts/export-aws-config.ts",
+    
+    "install:apps": "cd apps && npm install",
+    "install:infra": "cd infrastructure && npm install",
+    "install:all": "npm run install:apps && npm run install:infra"
   }
 }

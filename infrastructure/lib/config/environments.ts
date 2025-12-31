@@ -58,7 +58,7 @@ const developmentConfig: EnvironmentConfig = {
 };
 
 const productionConfig: EnvironmentConfig = {
-  environment: 'prod',
+  environment: 'live',
   region: 'eu-north-1',
   domainName: 'prepg3.co.uk',
   cognito: {

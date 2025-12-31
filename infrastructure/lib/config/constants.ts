@@ -10,8 +10,8 @@ export const APP_PREFIX = 'prepg3';
 
 // AWS Regions
 export const REGIONS = {
-  PRIMARY: 'eu-west-2', // London
-  BACKUP: 'eu-west-1',  // Ireland
+  PRIMARY: 'eu-north-1', // Stockholm
+  BACKUP: 'eu-west-1',  // London
 } as const;
 
 // Domain configuration
@@ -105,7 +105,7 @@ export const COGNITO = {
     REFRESH_TOKEN_DAYS: 30,
   },
   MFA: {
-    ENABLED_ENVIRONMENTS: ['prod', 'production'],
+    ENABLED_ENVIRONMENTS: ['live', 'production'],
   },
 } as const;
 
@@ -190,7 +190,7 @@ export function getResourceName(environment: string, resourceType: string, name:
 }
 
 export function isProduction(environment: string): boolean {
-  return environment === 'prod' || environment === 'production';
+  return environment === 'live' || environment === 'production';
 }
 
 export function isDevelopment(environment: string): boolean {

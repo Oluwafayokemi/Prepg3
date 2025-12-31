@@ -72,17 +72,12 @@ export class AuthStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       deletionProtection: props.environmentName === "live",
       email: cognito.UserPoolEmail.withCognito("no-reply@prepg3.co.uk"),
-      userPoolAddOns:
-        props.environmentName === "live"
-          ? {
-              advancedSecurityMode: cognito.AdvancedSecurityMode.ENFORCED,
-            }
-          : undefined,
     });
 
     // User Pool Client
     this.userPoolClient = this.userPool.addClient("WebClient", {
       userPoolClientName: `prepg3-web-client-${props.environmentName}`,
+      generateSecret: false, // ✅ Must be false for web apps
       authFlows: {
         userPassword: true,
         userSrp: true,

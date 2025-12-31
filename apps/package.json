@@ -1,0 +1,36 @@
+{
+  "name": "prepg3-apps",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:landing": "next dev landing -p 3000",
+    "dev:investor": "next dev ./investor -p 3001",
+    "dev:admin": "next dev ./admin -p 3002",
+    "dev:all": "concurrently \"npm run dev:landing\" \"npm run dev:investor\" \"npm run dev:admin\"",
+    "build:landing": "next build ./landing",
+    "build:investor": "next build ./investor",
+    "build:admin": "next build ./admin",
+    "build:all": "npm run build:landing && npm run build:investor && npm run build:admin",
+    "start:landing": "next start ./landing -p 3000",
+    "start:investor": "next start ./investor -p 3001",
+    "start:admin": "next start ./admin -p 3002",
+    "lint:landing": "next lint ./landing",
+    "lint:investor": "next lint ./investor",
+    "lint:admin": "next lint ./admin",
+    "lint:all": "npm run lint:landing && npm run lint:investor && npm run lint:admin",
+    "clean": "rm -rf landing/.next investor/.next admin/.next"
+  },
+  "dependencies": {
+    "@aws-amplify/ui-react": "^6.0.8",
+    "aws-amplify": "^6.0.12",
+    "next": "^14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "styled-components": "^6.1.8"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.0.4"
+  }
+}

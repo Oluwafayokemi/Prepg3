@@ -28,15 +28,15 @@ export class ApiLambda extends Construct {
   constructor(scope: Construct, id: string, props: ApiLambdaProps) {
     super(scope, id);
 
-    const isProd = isProduction(props.environmentName);
+    const isLive = isProduction(props.environmentName);
 
     // Create log group first (fixes deprecation warning)
     this.logGroup = new logs.LogGroup(this, 'LogGroup', {
       logGroupName: `/aws/lambda/prepg3-${props.functionName}-${props.environmentName}`,
-      retention: isProd 
+      retention: isLive 
         ? logs.RetentionDays.ONE_MONTH 
         : logs.RetentionDays.ONE_WEEK,
-      removalPolicy: isProd 
+      removalPolicy: isLive 
         ? cdk.RemovalPolicy.RETAIN 
         : cdk.RemovalPolicy.DESTROY,
     });
