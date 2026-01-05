@@ -21,6 +21,18 @@ type Investor {
   updatedAt: AWSDateTime!
 }
 
+type DashboardProperty {
+  id: ID!
+  address: String!
+  postcode: String!
+  propertyType: PropertyType!
+  currentValuation: Float!
+  status: PropertyStatus!
+  equityPercentage: Float!
+  investmentValue: Float!
+  investmentAmount: Float!
+}
+
 type Property {
   id: ID!
   address: String!
@@ -277,34 +289,69 @@ type Query {
   # Investors
   getInvestor(id: ID!): Investor
   listInvestors(limit: Int, nextToken: String): [Investor!]!
-  
+
   # Properties
   getProperty(id: ID!): Property
   listProperties(limit: Int, nextToken: String): [Property!]!
-  listPropertiesByStatus(status: PropertyStatus!, limit: Int, nextToken: String): [Property!]!
-  
+  listPropertiesByStatus(
+    status: PropertyStatus!
+    limit: Int
+    nextToken: String
+  ): [Property!]!
+
   # Investments
   getInvestment(id: ID!): Investment
-  listInvestmentsByInvestor(investorId: ID!, limit: Int, nextToken: String): InvestmentConnection!
-  listInvestmentsByProperty(propertyId: ID!, limit: Int, nextToken: String): InvestmentConnection!
-  
+  listInvestmentsByInvestor(
+    investorId: ID!
+    limit: Int
+    nextToken: String
+  ): InvestmentConnection!
+  listInvestmentsByProperty(
+    propertyId: ID!
+    limit: Int
+    nextToken: String
+  ): InvestmentConnection!
+
   # Transactions
   getTransaction(id: ID!): Transaction
-  listTransactionsByInvestor(investorId: ID!, limit: Int, nextToken: String): TransactionConnection!
-  listTransactionsByType(type: TransactionType!, limit: Int, nextToken: String): TransactionConnection!
-  
+  listTransactionsByInvestor(
+    investorId: ID!
+    limit: Int
+    nextToken: String
+  ): TransactionConnection!
+  listTransactionsByType(
+    type: TransactionType!
+    limit: Int
+    nextToken: String
+  ): TransactionConnection!
+
   # Documents
   getDocument(id: ID!): Document
-  listDocumentsByInvestor(investorId: ID!, limit: Int, nextToken: String): DocumentConnection!
-  listDocumentsByProperty(propertyId: ID!, limit: Int, nextToken: String): DocumentConnection!
+  listDocumentsByInvestor(
+    investorId: ID!
+    limit: Int
+    nextToken: String
+  ): DocumentConnection!
+  listDocumentsByProperty(
+    propertyId: ID!
+    limit: Int
+    nextToken: String
+  ): DocumentConnection!
   generateDocumentUrl(id: ID!): String! # Returns presigned URL
-  
   # Notifications
-  listNotificationsByInvestor(investorId: ID!, limit: Int, nextToken: String): NotificationConnection!
-  
+  listNotificationsByInvestor(
+    investorId: ID!
+    limit: Int
+    nextToken: String
+  ): NotificationConnection!
+
   # Developments
-  listDevelopmentsByProperty(propertyId: ID!, limit: Int, nextToken: String): DevelopmentConnection!
-  
+  listDevelopmentsByProperty(
+    propertyId: ID!
+    limit: Int
+    nextToken: String
+  ): DevelopmentConnection!
+
   # Dashboard Stats
   getInvestorDashboard(investorId: ID!): InvestorDashboard!
   getAdminDashboard: AdminDashboard!
@@ -318,23 +365,23 @@ type Mutation {
   # Investors
   createInvestor(input: CreateInvestorInput!): Investor!
   updateInvestor(input: UpdateInvestorInput!): Investor!
-  
+
   # Properties
   createProperty(input: CreatePropertyInput!): Property!
   updateProperty(input: UpdatePropertyInput!): Property!
-  
+
   # Investments
   createInvestment(input: CreateInvestmentInput!): Investment!
-  
+
   # Transactions
   createTransaction(input: CreateTransactionInput!): Transaction!
-  
+
   # Documents
   uploadDocument(input: UploadDocumentInput!): Document!
-  
+
   # Developments
   createDevelopment(input: CreateDevelopmentInput!): Development!
-  
+
   # Notifications
   sendNotification(input: SendNotificationInput!): Notification!
   markNotificationRead(id: ID!): Notification!
@@ -347,10 +394,10 @@ type Mutation {
 type Subscription {
   onInvestmentCreated(investorId: ID!): Investment
     @aws_subscribe(mutations: ["createInvestment"])
-  
+
   onNotificationCreated(investorId: ID!): Notification
     @aws_subscribe(mutations: ["sendNotification"])
-  
+
   onDevelopmentCreated(propertyId: ID!): Development
     @aws_subscribe(mutations: ["createDevelopment"])
 }
@@ -366,7 +413,7 @@ type InvestorDashboard {
   activeInvestments: Int!
   recentTransactions: [Transaction!]!
   unreadNotifications: Int!
-  properties: [Property!]!
+  properties: [DashboardProperty!]!
 }
 
 type AdminDashboard {

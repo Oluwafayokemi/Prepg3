@@ -1,1 +1,9 @@
-{}
+{
+  "/investments/page": "app/investments/page.js",
+  "/properties/page": "app/properties/page.js",
+  "/documents/page": "app/documents/page.js",
+  "/profile/page": "app/profile/page.js",
+  "/transactions/page": "app/transactions/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/dashboard/page": "app/dashboard/page.js"
+}

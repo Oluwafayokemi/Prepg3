@@ -33,7 +33,6 @@ export default function TestConfigPage() {
       // Check Amplify configuration
       const { Amplify } = await import('aws-amplify');
       const amplifyConfig = Amplify.getConfig();
-      console.log('Amplify Config:', amplifyConfig, '@@@@@@@@@@@@@@@@@@@');
       setConfigStatus(prev => ({
         ...prev,
         amplifyConfigured: !!amplifyConfig?.Auth?.Cognito?.userPoolId,

@@ -132,26 +132,28 @@ export default function LoginPage({
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
-    checkExistingSession();
-  }, []);
-
-  const checkExistingSession = async () => {
-    try {
-      console.log("🔍 Checking for existing session...");
-      const user = await getCurrentUser();
-
-      if (user) {
-        console.log("✅ Found existing session, redirecting...");
-        router.push(redirectPath);
-        return;
+    const checkExistingSession = async () => {
+      try {
+        console.log("🔍 Checking for existing session...");
+        const user = await getCurrentUser();
+        console.log(user, '@@@@@@@@@@@@@@')
+        // Only redirect if not already on the redirectPath
+        if (user.userId && window.location.pathname !== redirectPath) {
+          console.log("✅ Found existing session, redirecting...");
+          router.push(redirectPath);
+          return;
+        }
+      } catch (err) {
+        // No existing session, show login form
+        console.log("ℹ️ No existing session");
+      } finally {
+        setCheckingSession(false);
       }
-    } catch (err) {
-      // No existing session, show login form
-      console.log("ℹ️ No existing session");
-    } finally {
-      setCheckingSession(false);
-    }
-  };
+    };
+
+    checkExistingSession();
+    // Add redirectPath to dependency array to avoid stale closure
+  }, [router, redirectPath]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -159,12 +161,8 @@ export default function LoginPage({
     setLoading(true);
 
     try {
-      console.log("🔐 Attempting sign in for:", email);
-
-      // Clear any existing session
-      await signOut();
-
       // Sign in
+      await signOut(); // Clear any existing session
       const result = await signIn({
         username: email,
         password,

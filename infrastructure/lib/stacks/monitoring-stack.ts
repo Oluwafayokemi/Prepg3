@@ -1,12 +1,13 @@
-import * as cdk from 'aws-cdk-lib';
-import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
-import * as cloudwatch_actions from 'aws-cdk-lib/aws-cloudwatch-actions';
-import * as sns from 'aws-cdk-lib/aws-sns';
-import * as sns_subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as appsync from 'aws-cdk-lib/aws-appsync';
-import { Construct } from 'constructs';
+import * as cdk from "aws-cdk-lib";
+import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
+import * as cloudwatch_actions from "aws-cdk-lib/aws-cloudwatch-actions";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as sns_subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as appsync from "aws-cdk-lib/aws-appsync";
+import * as logs from "aws-cdk-lib/aws-logs";
+import { Construct } from "constructs";
 
 interface MonitoringStackProps extends cdk.StackProps {
   api: appsync.GraphqlApi;
@@ -20,21 +21,98 @@ export class MonitoringStack extends cdk.Stack {
     super(scope, id, props);
 
     // SNS Topic for alarms
-    const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
+    const alarmTopic = new sns.Topic(this, "AlarmTopic", {
       displayName: `PREPG3 ${props.environmentName} Alarms`,
       topicName: `prepg3-alarms-${props.environmentName}`,
     });
 
-    // Subscribe email to alarms (only in production)
-    if (props.environmentName === 'live') {
+    if (props.environmentName === "live") {
       alarmTopic.addSubscription(
-        new sns_subscriptions.EmailSubscription('alerts@prepg3.co.uk')
+        new sns_subscriptions.EmailSubscription("alerts@prepg3.co.uk")
       );
     }
 
-    // Dashboard
-    const dashboard = new cloudwatch.Dashboard(this, 'Dashboard', {
+    const dashboard = new cloudwatch.Dashboard(this, "Dashboard", {
       dashboardName: `PREPG3-${props.environmentName}`,
+    });
+
+    // ===========================================
+    // CLOUDWATCH INSIGHTS QUERIES
+    // ===========================================
+
+    const appSyncLogGroupName = `/aws/appsync/apis/${props.api.apiId}`;
+
+    // ✅ Query 1: All AppSync Errors
+    new logs.CfnQueryDefinition(this, "AppSyncErrorsQuery", {
+      name: `prepg3-${props.environmentName}-appsync-errors`,
+      queryString: `fields @timestamp, @message, fieldName, errorType, errorMessage, path
+| filter errorType exists or @message like /error/i
+| sort @timestamp desc
+| limit 100`,
+      logGroupNames: [appSyncLogGroupName],
+    });
+
+    // ✅ Query 2: Dashboard Errors
+    new logs.CfnQueryDefinition(this, "InvestorDashboardQuery", {
+      name: `prepg3-${props.environmentName}-dashboard-errors`,
+      queryString: `fields @timestamp, @message, fieldName, errorType, errorMessage
+| filter fieldName = "getInvestorDashboard" and (errorType exists or @message like /error/i)
+| sort @timestamp desc
+| limit 50`,
+      logGroupNames: [appSyncLogGroupName],
+    });
+
+    // ✅ Query 3: Slow Queries
+    new logs.CfnQueryDefinition(this, "SlowQueriesQuery", {
+      name: `prepg3-${props.environmentName}-slow-queries`,
+      queryString: `fields @timestamp, fieldName, executionTime, @message
+| filter executionTime > 1000
+| sort executionTime desc
+| limit 50`,
+      logGroupNames: [appSyncLogGroupName],
+    });
+
+    // ✅ Query 4: Auth Failures
+    new logs.CfnQueryDefinition(this, "AuthFailuresQuery", {
+      name: `prepg3-${props.environmentName}-auth-failures`,
+      queryString: `fields @timestamp, @message, fieldName
+| filter @message like /unauthorized/i or @message like /forbidden/i
+| sort @timestamp desc
+| limit 50`,
+      logGroupNames: [appSyncLogGroupName],
+    });
+
+    // ✅ Query 5: Lambda Errors
+    const lambdaLogGroupNames = Object.values(props.lambdaFunctions).map(
+      (func) => `/aws/lambda/${func.functionName}`
+    );
+
+    new logs.CfnQueryDefinition(this, "AllLambdaErrorsQuery", {
+      name: `prepg3-${props.environmentName}-lambda-errors`,
+      queryString: `fields @timestamp, @log, @message, level, context
+| filter level = "ERROR" or @message like /error/i
+| sort @timestamp desc
+| limit 100`,
+      logGroupNames: lambdaLogGroupNames,
+    });
+
+    // ✅ Query 6: Lambda Performance
+    new logs.CfnQueryDefinition(this, "LambdaPerformanceQuery", {
+      name: `prepg3-${props.environmentName}-lambda-performance`,
+      queryString: `filter @type = "REPORT"
+| fields @timestamp, @requestId, @duration, @billedDuration, @memorySize, @maxMemoryUsed
+| stats avg(@duration), max(@duration), avg(@maxMemoryUsed), max(@maxMemoryUsed) by @log
+| sort @duration desc`,
+      logGroupNames: lambdaLogGroupNames,
+    });
+
+    // ✅ Query 7: Request Volume
+    new logs.CfnQueryDefinition(this, "RequestVolumeQuery", {
+      name: `prepg3-${props.environmentName}-request-volume`,
+      queryString: `fields @timestamp, fieldName
+| stats count() as requests by fieldName
+| sort requests desc`,
+      logGroupNames: [appSyncLogGroupName],
     });
 
     // ===========================================
@@ -42,56 +120,54 @@ export class MonitoringStack extends cdk.Stack {
     // ===========================================
 
     const apiRequestsMetric = new cloudwatch.Metric({
-      namespace: 'AWS/AppSync',
-      metricName: '4XXError',
+      namespace: "AWS/AppSync",
+      metricName: "4XXError",
       dimensionsMap: {
         GraphQLAPIId: props.api.apiId,
       },
-      statistic: 'Sum',
+      statistic: "Sum",
       period: cdk.Duration.minutes(5),
     });
 
     const api5xxMetric = new cloudwatch.Metric({
-      namespace: 'AWS/AppSync',
-      metricName: '5XXError',
+      namespace: "AWS/AppSync",
+      metricName: "5XXError",
       dimensionsMap: {
         GraphQLAPIId: props.api.apiId,
       },
-      statistic: 'Sum',
+      statistic: "Sum",
       period: cdk.Duration.minutes(5),
     });
 
     const apiLatencyMetric = new cloudwatch.Metric({
-      namespace: 'AWS/AppSync',
-      metricName: 'Latency',
+      namespace: "AWS/AppSync",
+      metricName: "Latency",
       dimensionsMap: {
         GraphQLAPIId: props.api.apiId,
       },
-      statistic: 'Average',
+      statistic: "Average",
       period: cdk.Duration.minutes(5),
     });
 
-    // API Alarms
-    const api5xxAlarm = new cloudwatch.Alarm(this, 'Api5xxAlarm', {
+    const api5xxAlarm = new cloudwatch.Alarm(this, "Api5xxAlarm", {
       metric: api5xxMetric,
       threshold: 10,
       evaluationPeriods: 2,
-      alarmDescription: 'Alert when API has too many 5xx errors',
+      alarmDescription: "Alert when API has too many 5xx errors",
       alarmName: `PREPG3-${props.environmentName}-API-5xx`,
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
 
     api5xxAlarm.addAlarmAction(new cloudwatch_actions.SnsAction(alarmTopic));
 
-    // Add API metrics to dashboard
     dashboard.addWidgets(
       new cloudwatch.GraphWidget({
-        title: 'API Requests',
+        title: "API Requests",
         left: [apiRequestsMetric],
         width: 12,
       }),
       new cloudwatch.GraphWidget({
-        title: 'API Latency',
+        title: "API Latency",
         left: [apiLatencyMetric],
         width: 12,
       })
@@ -108,15 +184,10 @@ export class MonitoringStack extends cdk.Stack {
         period: cdk.Duration.minutes(5),
       });
 
-      const durationMetric = func.metricDuration({
-        period: cdk.Duration.minutes(5),
-      });
-
       const invocationMetric = func.metricInvocations({
         period: cdk.Duration.minutes(5),
       });
 
-      // Alarm for Lambda errors
       const errorAlarm = new cloudwatch.Alarm(this, `${name}ErrorAlarm`, {
         metric: errorMetric,
         threshold: 5,
@@ -128,7 +199,6 @@ export class MonitoringStack extends cdk.Stack {
 
       errorAlarm.addAlarmAction(new cloudwatch_actions.SnsAction(alarmTopic));
 
-      // Add to dashboard
       lambdaWidgets.push(
         new cloudwatch.GraphWidget({
           title: `${name} - Invocations & Errors`,
@@ -139,7 +209,6 @@ export class MonitoringStack extends cdk.Stack {
       );
     });
 
-    // Add Lambda widgets in rows of 3
     for (let i = 0; i < lambdaWidgets.length; i += 3) {
       dashboard.addWidgets(...lambdaWidgets.slice(i, i + 3));
     }
@@ -169,28 +238,33 @@ export class MonitoringStack extends cdk.Stack {
       );
     });
 
-    // Add table widgets
     for (let i = 0; i < tableWidgets.length; i += 2) {
       dashboard.addWidgets(...tableWidgets.slice(i, i + 2));
     }
 
     // ===========================================
-    // CUSTOM BUSINESS METRICS
+    // OUTPUTS
     // ===========================================
 
-    // You can add custom metrics later for business KPIs
-    // e.g., Daily investments, Total portfolio value, etc.
-
-    // Outputs
-    new cdk.CfnOutput(this, 'DashboardUrl', {
+    new cdk.CfnOutput(this, "DashboardUrl", {
       value: `https://console.aws.amazon.com/cloudwatch/home?region=${this.region}#dashboards:name=${dashboard.dashboardName}`,
-      description: 'CloudWatch Dashboard URL',
+      description: "CloudWatch Dashboard URL",
     });
 
-    new cdk.CfnOutput(this, 'AlarmTopicArn', {
+    new cdk.CfnOutput(this, "AlarmTopicArn", {
       value: alarmTopic.topicArn,
       exportName: `PREPG3-${props.environmentName}-AlarmTopicArn`,
-      description: 'SNS Topic for Alarms',
+      description: "SNS Topic for Alarms",
+    });
+
+    new cdk.CfnOutput(this, "InsightsQueriesUrl", {
+      value: `https://console.aws.amazon.com/cloudwatch/home?region=${this.region}#logsV2:logs-insights`,
+      description: "CloudWatch Logs Insights - Saved Queries",
+    });
+
+    new cdk.CfnOutput(this, "AppSyncLogGroup", {
+      value: appSyncLogGroupName,
+      description: "AppSync API Log Group Name",
     });
   }
 }

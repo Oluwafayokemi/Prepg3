@@ -1,6 +1,8 @@
 // infrastructure/lib/constructs/api-lambda.ts
+
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs'; // ✅ Add this
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as appsync from 'aws-cdk-lib/aws-appsync';
 import { Construct } from 'constructs';
@@ -23,38 +25,40 @@ export interface ApiLambdaProps {
 export class ApiLambda extends Construct {
   public readonly function: lambda.Function;
   public readonly dataSource?: appsync.LambdaDataSource;
-  public readonly logGroup: logs.LogGroup;
 
   constructor(scope: Construct, id: string, props: ApiLambdaProps) {
     super(scope, id);
 
     const isLive = isProduction(props.environmentName);
 
-    // Create log group first (fixes deprecation warning)
-    this.logGroup = new logs.LogGroup(this, 'LogGroup', {
-      logGroupName: `/aws/lambda/prepg3-${props.functionName}-${props.environmentName}`,
-      retention: isLive 
-        ? logs.RetentionDays.ONE_MONTH 
-        : logs.RetentionDays.ONE_WEEK,
-      removalPolicy: isLive 
-        ? cdk.RemovalPolicy.RETAIN 
-        : cdk.RemovalPolicy.DESTROY,
-    });
+    // ✅ Convert handler path to entry path
+    // handler: 'investors/get-investor-dashboard/index.handler'
+    // becomes: '../../../lambda/investors/get-investor-dashboard/index.ts'
+    const handlerPath = props.handler.replace('.handler', '');
+    const entryPath = path.join(__dirname, '../../../lambda', `${handlerPath}.ts`);
 
-    // Create Lambda function
-    this.function = new lambda.Function(this, 'Function', {
+    // ✅ Use NodejsFunction for TypeScript support
+    this.function = new nodejs.NodejsFunction(this, 'Function', {
       functionName: `prepg3-${props.functionName}-${props.environmentName}`,
-      runtime: lambda.Runtime.NODEJS_18_X,
-      handler: props.handler,
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../lambda')),
+      entry: entryPath,
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_20_X,
       timeout: cdk.Duration.seconds(props.timeout || LAMBDA_DEFAULTS.TIMEOUT_SECONDS.MEDIUM),
       memorySize: props.memorySize || LAMBDA_DEFAULTS.MEMORY_MB.MEDIUM,
+      bundling: {
+        externalModules: ['@aws-sdk/*'], // Don't bundle AWS SDK
+        minify: isLive,
+        sourceMap: true,
+        target: 'es2020',
+      },
       environment: {
         NODE_OPTIONS: '--enable-source-maps',
         ENVIRONMENT: props.environmentName,
         ...props.environment,
       },
-      logGroup: this.logGroup, // ✅ Use logGroup instead of logRetention
+      logRetention: isLive 
+        ? logs.RetentionDays.ONE_MONTH 
+        : logs.RetentionDays.ONE_WEEK,
       tracing: lambda.Tracing.ACTIVE,
       description: `${props.functionName} Lambda for PREPG3 ${props.environmentName}`,
       ...(props.initialPolicy && {
@@ -68,9 +72,8 @@ export class ApiLambda extends Construct {
 
     // Connect to AppSync if provided
     if (props.api && props.typeName && props.fieldName) {
-      // ✅ Use unique ID by including fieldName
       const dataSourceId = `${id}DataSource`;
-      const resolverId = `${id}${props.typeName}${props.fieldName}Resolver`; // Make it unique!
+      const resolverId = `${id}${props.typeName}${props.fieldName}Resolver`;
 
       this.dataSource = props.api.addLambdaDataSource(
         dataSourceId,
@@ -89,25 +92,17 @@ export class ApiLambda extends Construct {
       });
     }
 
-    // Output function ARN
+    // Outputs
     new cdk.CfnOutput(this, 'FunctionArn', {
       value: this.function.functionArn,
       exportName: `PREPG3-${props.environmentName}-${props.functionName}-Arn`,
       description: `ARN for ${props.functionName} Lambda`,
     });
 
-    // Output function name
     new cdk.CfnOutput(this, 'FunctionName', {
       value: this.function.functionName,
       exportName: `PREPG3-${props.environmentName}-${props.functionName}-Name`,
       description: `Name for ${props.functionName} Lambda`,
-    });
-
-    // Output log group name
-    new cdk.CfnOutput(this, 'LogGroupName', {
-      value: this.logGroup.logGroupName,
-      exportName: `PREPG3-${props.environmentName}-${props.functionName}-LogGroup`,
-      description: `Log group for ${props.functionName} Lambda`,
     });
   }
 

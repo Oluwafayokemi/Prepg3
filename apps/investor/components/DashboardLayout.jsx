@@ -1,4 +1,4 @@
-// apps/admin/components/AdminLayout.jsx
+// apps/investor/components/DashboardLayout.jsx
 'use client';
 
 import { useState } from 'react';
@@ -28,7 +28,7 @@ const SidebarHeader = styled.div`
 const Logo = styled.h1`
   font-size: 1.5rem;
   font-weight: 700;
-  color: #dc2626;
+  color: #2563eb;
   margin: 0;
 `;
 
@@ -43,8 +43,8 @@ const NavItem = styled.a`
   padding: 0.75rem 1rem;
   margin-bottom: 0.25rem;
   border-radius: 0.375rem;
-  color: ${props => props.$active ? '#dc2626' : '#6b7280'};
-  background-color: ${props => props.$active ? '#fef2f2' : 'transparent'};
+  color: ${props => props.$active ? '#2563eb' : '#6b7280'};
+  background-color: ${props => props.$active ? '#eff6ff' : 'transparent'};
   font-weight: ${props => props.$active ? '500' : '400'};
   cursor: pointer;
   text-decoration: none;
@@ -108,12 +108,15 @@ const Content = styled.div`
 
 const navItems = [
   { name: 'Dashboard', path: '/dashboard', icon: '📊' },
-  { name: 'Investors', path: '/investors', icon: '👥' },
+  { name: 'Investments', path: '/investments', icon: '💰' },
   { name: 'Properties', path: '/properties', icon: '🏠' },
-  { name: 'Reports', path: '/reports', icon: '📈' },
+  { name: 'Documents', path: '/documents', icon: '📄' },
+  { name: 'Transactions', path: '/transactions', icon: '💳' },
+  { name: 'Profile', path: '/profile', icon: '👤' },
+  { name: 'Settings', path: '/settings', icon: '⚙️' },
 ];
 
-export default function AdminLayout({ children }) {
+export default function DashboardLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -136,7 +139,7 @@ export default function AdminLayout({ children }) {
     <Container>
       <Sidebar>
         <SidebarHeader>
-          <Logo>PREPG3 Admin</Logo>
+          <Logo>PREPG3</Logo>
         </SidebarHeader>
 
         <Nav>
@@ -161,7 +164,7 @@ export default function AdminLayout({ children }) {
 
       <Main>
         <Header>
-          <HeaderTitle>Admin Panel</HeaderTitle>
+          <HeaderTitle>Investor Portal</HeaderTitle>
         </Header>
         
         <Content>

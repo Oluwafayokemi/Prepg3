@@ -1,6 +1,7 @@
 // infrastructure/lib/stacks/auth-stack.ts
 import * as cdk from "aws-cdk-lib";
 import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as iam from "aws-cdk-lib/aws-iam"; // ✅ ADD THIS IMPORT
 import { Construct } from "constructs";
 import { getEnvironmentConfig } from "../config/environments";
 
@@ -52,7 +53,6 @@ export class AuthStack extends cdk.Stack {
         investorId: new cognito.StringAttribute({ mutable: true }),
         role: new cognito.StringAttribute({ mutable: true }),
       },
-      // USE CONFIG HERE ✅
       passwordPolicy: {
         minLength: config.cognito.passwordPolicy.minLength,
         requireLowercase: config.cognito.passwordPolicy.requireLowercase,
@@ -77,7 +77,7 @@ export class AuthStack extends cdk.Stack {
     // User Pool Client
     this.userPoolClient = this.userPool.addClient("WebClient", {
       userPoolClientName: `prepg3-web-client-${props.environmentName}`,
-      generateSecret: false, // ✅ Must be false for web apps
+      generateSecret: false,
       authFlows: {
         userPassword: true,
         userSrp: true,
@@ -97,14 +97,13 @@ export class AuthStack extends cdk.Stack {
           cognito.OAuthScope.OPENID,
           cognito.OAuthScope.PROFILE,
         ],
-        // USE CONFIG FOR CALLBACK URLS ✅
         callbackUrls:
           props.environmentName === "live"
             ? [
                 `https://investor.${config.domainName}`,
                 `https://admin.${config.domainName}`,
               ]
-            : ["http://localhost:3000", "http://localhost:3001"],
+            : ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
         logoutUrls:
           props.environmentName === "live"
             ? [`https://${config.domainName}`]
@@ -135,9 +134,48 @@ export class AuthStack extends cdk.Stack {
         {
           clientId: this.userPoolClient.userPoolClientId,
           providerName: this.userPool.userPoolProviderName,
+          serverSideTokenCheck: false,
         },
       ],
     });
+
+    // ✅ Create IAM role for authenticated users
+    const authenticatedRole = new iam.Role(this, "CognitoAuthenticatedRole", {
+      assumedBy: new iam.FederatedPrincipal(
+        "cognito-identity.amazonaws.com",
+        {
+          StringEquals: {
+            "cognito-identity.amazonaws.com:aud": this.identityPool.ref,
+          },
+          "ForAnyValue:StringLike": {
+            "cognito-identity.amazonaws.com:amr": "authenticated",
+          },
+        },
+        "sts:AssumeRoleWithWebIdentity"
+      ),
+      description: "Role for authenticated Cognito users",
+    });
+
+    // ✅ Grant permissions to call AppSync
+    authenticatedRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["appsync:GraphQL"],
+        resources: ["*"], // Will be restricted by AppSync authorization
+      })
+    );
+
+    // ✅ Attach role to Identity Pool
+    new cognito.CfnIdentityPoolRoleAttachment(
+      this,
+      "IdentityPoolRoleAttachment",
+      {
+        identityPoolId: this.identityPool.ref,
+        roles: {
+          authenticated: authenticatedRole.roleArn,
+        },
+      }
+    );
 
     // Outputs
     new cdk.CfnOutput(this, "UserPoolId", {
@@ -161,6 +199,12 @@ export class AuthStack extends cdk.Stack {
     new cdk.CfnOutput(this, "UserPoolDomain", {
       value: `https://${this.userPool.userPoolId}.auth.${this.region}.amazoncognito.com`,
       description: "Cognito Hosted UI URL",
+    });
+
+    new cdk.CfnOutput(this, "AuthenticatedRoleArn", {
+      value: authenticatedRole.roleArn,
+      exportName: `PREPG3-${props.environmentName}-AuthenticatedRoleArn`,
+      description: "IAM Role ARN for authenticated users",
     });
   }
 }

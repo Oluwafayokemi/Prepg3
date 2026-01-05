@@ -1,7 +1,7 @@
 // apps/investor/app/layout.jsx
 import RootLayout from "../../components/RootLayout";
 import AuthProvider from "../../shared/components/AuthProvider";
-import AmplifyInitializer from "@/shared/AmplifyInitializer";
+import AmplifyInitializer from "@/shared/components/AmplifyInitializer";
 
 export const metadata = {
   title: "PREPG3 Investor Portal",

@@ -1,0 +1,147 @@
+{
+  "properties": [
+    {
+      "id": "prop_001",
+      "address": "123 Victoria Street, London",
+      "postcode": "SW1E 6DE",
+      "city": "London",
+      "propertyType": "APARTMENT",
+      "bedrooms": 2,
+      "bathrooms": 2,
+      "squareFeet": 950,
+      "purchasePrice": 450000,
+      "currentValuation": 485000,
+      "status": "ACTIVE",
+      "acquisitionDate": "2023-06-15",
+      "description": "Modern 2-bedroom apartment in prime London location"
+    },
+    {
+      "id": "prop_002",
+      "address": "456 Oxford Road, Manchester",
+      "postcode": "M1 5QA",
+      "city": "Manchester",
+      "propertyType": "HOUSE",
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "squareFeet": 1200,
+      "purchasePrice": 280000,
+      "currentValuation": 310000,
+      "status": "ACTIVE",
+      "acquisitionDate": "2023-08-20"
+    },
+    {
+      "id": "prop_003",
+      "address": "789 Park Lane, Birmingham",
+      "postcode": "B1 1AA",
+      "city": "Birmingham",
+      "propertyType": "APARTMENT",
+      "bedrooms": 1,
+      "bathrooms": 1,
+      "squareFeet": 650,
+      "purchasePrice": 175000,
+      "currentValuation": 195000,
+      "status": "ACTIVE",
+      "acquisitionDate": "2024-01-10"
+    }
+  ],
+  "investments": [
+    {
+      "id": "inv_001",
+      "investorId": "john.smith@prepg3.co.uk",
+      "propertyId": "prop_001",
+      "investmentAmount": 100000,
+      "equityPercentage": 22.22,
+      "investmentDate": "2023-06-20",
+      "status": "ACTIVE",
+      "expectedROI": 8.5,
+      "currentValue": 107777
+    },
+    {
+      "id": "inv_002",
+      "investorId": "john.smith@prepg3.co.uk",
+      "propertyId": "prop_002",
+      "investmentAmount": 75000,
+      "equityPercentage": 26.79,
+      "investmentDate": "2023-08-25",
+      "status": "ACTIVE",
+      "expectedROI": 9.2,
+      "currentValue": 83047
+    },
+    {
+      "id": "inv_003",
+      "investorId": "john.smith@prepg3.co.uk",
+      "propertyId": "prop_003",
+      "investmentAmount": 50000,
+      "equityPercentage": 28.57,
+      "investmentDate": "2024-01-15",
+      "status": "ACTIVE",
+      "expectedROI": 10.5,
+      "currentValue": 55714
+    }
+  ],
+  "transactions": [
+    {
+      "id": "txn_001",
+      "investmentId": "inv_001",
+      "type": "INITIAL_INVESTMENT",
+      "amount": 100000,
+      "date": "2023-06-20",
+      "description": "Initial investment - Victoria Street property",
+      "status": "COMPLETED"
+    },
+    {
+      "id": "txn_002",
+      "investmentId": "inv_001",
+      "type": "DIVIDEND",
+      "amount": 2125,
+      "date": "2023-09-30",
+      "description": "Q3 2023 dividend payment",
+      "status": "COMPLETED"
+    },
+    {
+      "id": "txn_003",
+      "investmentId": "inv_001",
+      "type": "DIVIDEND",
+      "amount": 2125,
+      "date": "2023-12-31",
+      "description": "Q4 2023 dividend payment",
+      "status": "COMPLETED"
+    },
+    {
+      "id": "txn_004",
+      "investmentId": "inv_001",
+      "type": "DIVIDEND",
+      "amount": 2250,
+      "date": "2024-03-31",
+      "description": "Q1 2024 dividend payment",
+      "status": "COMPLETED"
+    },
+    {
+      "id": "txn_005",
+      "investmentId": "inv_002",
+      "type": "INITIAL_INVESTMENT",
+      "amount": 75000,
+      "date": "2023-08-25",
+      "description": "Initial investment - Oxford Road property",
+      "status": "COMPLETED"
+    },
+    {
+      "id": "txn_006",
+      "investmentId": "inv_002",
+      "type": "DIVIDEND",
+      "amount": 1725,
+      "date": "2023-12-31",
+      "description": "Q4 2023 dividend payment",
+      "status": "COMPLETED"
+    },
+    {
+      "id": "txn_007",
+      "investmentId": "inv_003",
+      "type": "INITIAL_INVESTMENT",
+      "amount": 50000,
+      "date": "2024-01-15",
+      "description": "Initial investment - Park Lane property",
+      "status": "COMPLETED"
+    }
+  ]
+}

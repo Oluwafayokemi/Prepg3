@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    },
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": [
-      "es2022"
-    ],
+    "lib": ["es2022"],
     "declaration": true,
     "strict": true,
     "noImplicitAny": true,
@@ -21,12 +22,9 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "skipLibCheck": true,
-    "typeRoots": [
-      "./node_modules/@types"
-    ]
+    "typeRoots": ["./node_modules/@types"],
+    "outDir": "./build", // ✅ All compiled JS goes to build/
+    "rootDir": "."
   },
-  "exclude": [
-    "node_modules",
-    "cdk.out"
-  ]
+  "exclude": ["node_modules", "cdk.out", "build"]
 }

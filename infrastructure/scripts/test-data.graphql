@@ -1,0 +1,273 @@
+# scripts/test-data.graphql
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CREATE PROPERTIES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+mutation CreateProperty1 {
+  createProperty(input: {
+    address: "123 Victoria Street, London"
+    postcode: "SW1E 6DE"
+    city: "London"
+    propertyType: "APARTMENT"
+    bedrooms: 2
+    bathrooms: 2
+    squareFeet: 950
+    purchasePrice: 450000
+    currentValuation: 485000
+    status: "ACTIVE"
+    acquisitionDate: "2023-06-15"
+    description: "Modern 2-bedroom apartment in prime London location with excellent transport links"
+  }) {
+    id
+    address
+    currentValuation
+  }
+}
+
+mutation CreateProperty2 {
+  createProperty(input: {
+    address: "456 Oxford Road, Manchester"
+    postcode: "M1 5QA"
+    city: "Manchester"
+    propertyType: "HOUSE"
+    bedrooms: 3
+    bathrooms: 2
+    squareFeet: 1200
+    purchasePrice: 280000
+    currentValuation: 310000
+    status: "ACTIVE"
+    acquisitionDate: "2023-08-20"
+    description: "Spacious 3-bedroom house in Manchester city center"
+  }) {
+    id
+    address
+    currentValuation
+  }
+}
+
+mutation CreateProperty3 {
+  createProperty(input: {
+    address: "789 Park Lane, Birmingham"
+    postcode: "B1 1AA"
+    city: "Birmingham"
+    propertyType: "APARTMENT"
+    bedrooms: 1
+    bathrooms: 1
+    squareFeet: 650
+    purchasePrice: 175000
+    currentValuation: 195000
+    status: "ACTIVE"
+    acquisitionDate: "2024-01-10"
+    description: "Compact 1-bedroom apartment perfect for young professionals"
+  }) {
+    id
+    address
+    currentValuation
+  }
+}
+
+mutation CreateProperty4 {
+  createProperty(input: {
+    address: "321 High Street, Edinburgh"
+    postcode: "EH1 1SR"
+    city: "Edinburgh"
+    propertyType: "APARTMENT"
+    bedrooms: 2
+    bathrooms: 1
+    squareFeet: 850
+    purchasePrice: 240000
+    currentValuation: 265000
+    status: "UNDER_OFFER"
+    acquisitionDate: "2023-11-05"
+    description: "Historic building conversion in Edinburgh's Old Town"
+  }) {
+    id
+    address
+    currentValuation
+  }
+}
+
+mutation CreateProperty5 {
+  createProperty(input: {
+    address: "555 Marina Drive, Bristol"
+    postcode: "BS1 5TY"
+    city: "Bristol"
+    propertyType: "HOUSE"
+    bedrooms: 4
+    bathrooms: 3
+    squareFeet: 1800
+    purchasePrice: 520000
+    currentValuation: 560000
+    status: "ACTIVE"
+    acquisitionDate: "2023-09-12"
+    description: "Luxury 4-bedroom house with waterfront views"
+  }) {
+    id
+    address
+    currentValuation
+  }
+}
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CREATE INVESTMENTS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+mutation CreateInvestment1 {
+  createInvestment(input: {
+    investorId: "john.smith@prepg3.co.uk"
+    propertyId: "PROPERTY_1_ID" # Replace with actual property ID
+    investmentAmount: 100000
+    equityPercentage: 22.22
+    investmentDate: "2023-06-20"
+    status: "ACTIVE"
+    expectedROI: 8.5
+  }) {
+    id
+    investmentAmount
+    equityPercentage
+  }
+}
+
+mutation CreateInvestment2 {
+  createInvestment(input: {
+    investorId: "john.smith@prepg3.co.uk"
+    propertyId: "PROPERTY_2_ID"
+    investmentAmount: 75000
+    equityPercentage: 26.79
+    investmentDate: "2023-08-25"
+    status: "ACTIVE"
+    expectedROI: 9.2
+  }) {
+    id
+    investmentAmount
+    equityPercentage
+  }
+}
+
+mutation CreateInvestment3 {
+  createInvestment(input: {
+    investorId: "sarah.jones@prepg3.co.uk"
+    propertyId: "PROPERTY_1_ID"
+    investmentAmount: 50000
+    equityPercentage: 11.11
+    investmentDate: "2023-06-20"
+    status: "ACTIVE"
+    expectedROI: 8.5
+  }) {
+    id
+    investmentAmount
+    equityPercentage
+  }
+}
+
+mutation CreateInvestment4 {
+  createInvestment(input: {
+    investorId: "sarah.jones@prepg3.co.uk"
+    propertyId: "PROPERTY_3_ID"
+    investmentAmount: 87500
+    equityPercentage: 50.0
+    investmentDate: "2024-01-15"
+    status: "ACTIVE"
+    expectedROI: 10.5
+  }) {
+    id
+    investmentAmount
+    equityPercentage
+  }
+}
+
+mutation CreateInvestment5 {
+  createInvestment(input: {
+    investorId: "michael.brown@prepg3.co.uk"
+    propertyId: "PROPERTY_5_ID"
+    investmentAmount: 150000
+    equityPercentage: 28.85
+    investmentDate: "2023-09-15"
+    status: "ACTIVE"
+    expectedROI: 7.8
+  }) {
+    id
+    investmentAmount
+    equityPercentage
+  }
+}
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CREATE TRANSACTIONS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+mutation CreateTransaction1 {
+  createTransaction(input: {
+    investmentId: "INVESTMENT_1_ID"
+    type: "INITIAL_INVESTMENT"
+    amount: 100000
+    date: "2023-06-20"
+    description: "Initial investment in Victoria Street property"
+    status: "COMPLETED"
+  }) {
+    id
+    amount
+    type
+  }
+}
+
+mutation CreateTransaction2 {
+  createTransaction(input: {
+    investmentId: "INVESTMENT_1_ID"
+    type: "DIVIDEND"
+    amount: 2125
+    date: "2023-09-30"
+    description: "Q3 2023 dividend payment"
+    status: "COMPLETED"
+  }) {
+    id
+    amount
+    type
+  }
+}
+
+mutation CreateTransaction3 {
+  createTransaction(input: {
+    investmentId: "INVESTMENT_1_ID"
+    type: "DIVIDEND"
+    amount: 2125
+    date: "2023-12-31"
+    description: "Q4 2023 dividend payment"
+    status: "COMPLETED"
+  }) {
+    id
+    amount
+    type
+  }
+}
+
+mutation CreateTransaction4 {
+  createTransaction(input: {
+    investmentId: "INVESTMENT_2_ID"
+    type: "INITIAL_INVESTMENT"
+    amount: 75000
+    date: "2023-08-25"
+    description: "Initial investment in Oxford Road property"
+    status: "COMPLETED"
+  }) {
+    id
+    amount
+    type
+  }
+}
+
+mutation CreateTransaction5 {
+  createTransaction(input: {
+    investmentId: "INVESTMENT_2_ID"
+    type: "DIVIDEND"
+    amount: 1725
+    date: "2023-12-31"
+    description: "Q4 2023 dividend payment"
+    status: "COMPLETED"
+  }) {
+    id
+    amount
+    type
+  }
+}
