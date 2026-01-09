@@ -1,0 +1,10 @@
+2:I[7379,[],"ClientPageRoot"]
+3:I[4232,["659","static/chunks/659-1b26d253cb43df5d.js","931","static/chunks/app/page-ea00090223d3f575.js"],"default",1]
+4:I[9172,["659","static/chunks/659-1b26d253cb43df5d.js","185","static/chunks/app/layout-cfc7cbc4e6a58791.js"],"default"]
+5:I[6846,["659","static/chunks/659-1b26d253cb43df5d.js","185","static/chunks/app/layout-cfc7cbc4e6a58791.js"],"GlobalStyles"]
+6:I[1742,[],""]
+7:I[9121,[],""]
+8:I[1702,["659","static/chunks/659-1b26d253cb43df5d.js","650","static/chunks/650-43efb7be2f2f2973.js","160","static/chunks/app/not-found-e153a8428611ad0f.js"],"default"]
+0:["G024x3yfmk49aKw2BnT5r",[[["",{"children":["__PAGE__",{}]},"$undefined","$undefined",true],["",{"children":["__PAGE__",{},[["$L1",["$","$L2",null,{"props":{"params":{},"searchParams":{}},"Component":"$3"}],null],null],null]},[[null,["$","html",null,{"lang":"en","children":[["$","head",null,{"children":[["$","link",null,{"rel":"icon","href":"/_next/static/media/logo.bb8fb203.png","type":"image/png","sizes":"80x80"}],["$","title",null,{"children":"PREPG3 - Property Investment Platform"}],["$","meta",null,{"name":"description","content":"Invest in premium UK property developments"}],["$","meta",null,{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","body",null,{"children":["$","$L4",null,{"children":[["$","$L5",null,{}],["$","$L6",null,{"parallelRouterKey":"children","segmentPath":["children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L7",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":["$","$L8",null,{"homeLink":"/"}],"notFoundStyles":[]}]]}]}]]}]],null],null],["$L9",null]]]]
+9:[["$","meta","0",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","1",{"charSet":"utf-8"}],["$","title","2",{"children":"PREPG3 - Property Investment Platform"}],["$","meta","3",{"name":"description","content":"Invest in premium UK property developments"}]]
+1:null

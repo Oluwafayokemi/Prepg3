@@ -1,1 +1,16 @@
-{}
+{
+  "app/test-config/page.jsx -> ../../../shared/config/aws-exports.js": {
+    "id": 2336,
+    "files": [
+      "static/chunks/336.65d3b79466f9c580.js"
+    ]
+  },
+  "app/test-config/page.jsx -> aws-amplify": {
+    "id": 7132,
+    "files": [
+      "static/chunks/396-b8ed59d773d4e005.js",
+      "static/chunks/315-68c8b1816d9fd42d.js",
+      "static/chunks/29.6d9da2f70c092932.js"
+    ]
+  }
+}

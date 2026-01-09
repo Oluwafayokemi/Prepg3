@@ -1,9 +1,18 @@
 {
-  "/investments/page": "app/investments/page.js",
-  "/properties/page": "app/properties/page.js",
-  "/documents/page": "app/documents/page.js",
-  "/profile/page": "app/profile/page.js",
-  "/transactions/page": "app/transactions/page.js",
   "/_not-found/page": "app/_not-found/page.js",
-  "/dashboard/page": "app/dashboard/page.js"
+  "/dashboard/page": "app/dashboard/page.js",
+  "/documents/page": "app/documents/page.js",
+  "/investments/page": "app/investments/page.js",
+  "/forgot-password/page": "app/forgot-password/page.js",
+  "/investments/[id]/page": "app/investments/[id]/page.js",
+  "/login/page": "app/login/page.js",
+  "/notifications/page": "app/notifications/page.js",
+  "/page": "app/page.js",
+  "/profile/page": "app/profile/page.js",
+  "/properties/[id]/page": "app/properties/[id]/page.js",
+  "/properties/page": "app/properties/page.js",
+  "/test-config/page": "app/test-config/page.js",
+  "/settings/page": "app/settings/page.js",
+  "/transactions/page": "app/transactions/page.js",
+  "/unauthorized/page": "app/unauthorized/page.js"
 }

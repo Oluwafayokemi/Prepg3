@@ -1,176 +1,94 @@
 // apps/investor/components/DashboardLayout.jsx
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { signOut } from 'aws-amplify/auth';
-import styled from 'styled-components';
+import { useState, useEffect } from "react";
+import styled from "styled-components";
+import Header from "./Header";
+import Sidebar from "./Sidebar";
 
-const Container = styled.div`
-  display: flex;
+const LayoutContainer = styled.div`
   min-height: 100vh;
-  background-color: #f9fafb;
-`;
-
-const Sidebar = styled.aside`
-  width: 16rem;
-  background-color: white;
-  border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
+  background: #f9fafb;
 `;
 
-const SidebarHeader = styled.div`
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-`;
-
-const Logo = styled.h1`
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #2563eb;
-  margin: 0;
-`;
-
-const Nav = styled.nav`
-  flex: 1;
-  padding: 1rem;
-`;
-
-const NavItem = styled.a`
+const ContentWrapper = styled.div`
   display: flex;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.25rem;
-  border-radius: 0.375rem;
-  color: ${props => props.$active ? '#2563eb' : '#6b7280'};
-  background-color: ${props => props.$active ? '#eff6ff' : 'transparent'};
-  font-weight: ${props => props.$active ? '500' : '400'};
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.15s ease;
-
-  &:hover {
-    background-color: #f3f4f6;
-    color: #111827;
-  }
-`;
-
-const SidebarFooter = styled.div`
-  padding: 1rem;
-  border-top: 1px solid #e5e7eb;
-`;
-
-const LogoutButton = styled.button`
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background-color: transparent;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.375rem;
-  color: #6b7280;
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: all 0.15s ease;
-
-  &:hover {
-    background-color: #fef2f2;
-    border-color: #fecaca;
-    color: #dc2626;
-  }
-`;
-
-const Main = styled.main`
   flex: 1;
+  overflow: hidden;
+`;
+
+const MainContent = styled.main`
+  flex: 1;
+  padding: 2rem 1.5rem;
   overflow-y: auto;
-`;
-
-const Header = styled.header`
-  background-color: white;
-  border-bottom: 1px solid #e5e7eb;
-  padding: 1rem 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const HeaderTitle = styled.h2`
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
-`;
-
-const Content = styled.div`
-  padding: 2rem;
-  max-width: 1280px;
+  max-width: 1600px;
+  width: 100%;
   margin: 0 auto;
+
+  @media (max-width: 640px) {
+    padding: 1rem;
+  }
 `;
 
-const navItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: '📊' },
-  { name: 'Investments', path: '/investments', icon: '💰' },
-  { name: 'Properties', path: '/properties', icon: '🏠' },
-  { name: 'Documents', path: '/documents', icon: '📄' },
-  { name: 'Transactions', path: '/transactions', icon: '💳' },
-  { name: 'Profile', path: '/profile', icon: '👤' },
-  { name: 'Settings', path: '/settings', icon: '⚙️' },
-];
+// Overlay for mobile when sidebar is open
+const Overlay = styled.div`
+  display: ${(props) => (props.$isOpen ? "block" : "none")};
+  position: fixed;
+  top: 70px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 40;
+
+  @media (min-width: 769px) {
+    display: none;
+  }
+`;
 
 export default function DashboardLayout({ children }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [loggingOut, setLoggingOut] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
-  const handleLogout = async () => {
-    if (loggingOut) return;
-    
-    setLoggingOut(true);
-    
-    try {
-      await signOut();
-      router.push('/login');
-    } catch (error) {
-      console.error('Error signing out:', error);
-      setLoggingOut(false);
+  useEffect(() => {
+    // Check if mobile on mount
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 769;
+      setIsMobile(mobile);
+      // Auto-close sidebar on mobile
+      if (mobile) {
+        setSidebarOpen(false);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  const closeSidebarOnMobile = () => {
+    if (isMobile) {
+      setSidebarOpen(false);
     }
   };
 
   return (
-    <Container>
-      <Sidebar>
-        <SidebarHeader>
-          <Logo>PREPG3</Logo>
-        </SidebarHeader>
-
-        <Nav>
-          {navItems.map((item) => (
-            <NavItem
-              key={item.path}
-              $active={pathname === item.path}
-              onClick={() => router.push(item.path)}
-            >
-              <span style={{ marginRight: '0.75rem' }}>{item.icon}</span>
-              {item.name}
-            </NavItem>
-          ))}
-        </Nav>
-
-        <SidebarFooter>
-          <LogoutButton onClick={handleLogout} disabled={loggingOut}>
-            {loggingOut ? 'Logging out...' : '🚪 Logout'}
-          </LogoutButton>
-        </SidebarFooter>
-      </Sidebar>
-
-      <Main>
-        <Header>
-          <HeaderTitle>Investor Portal</HeaderTitle>
-        </Header>
-        
-        <Content>
-          {children}
-        </Content>
-      </Main>
-    </Container>
+    <LayoutContainer>
+      <Header onMenuToggle={toggleSidebar} sidebarOpen={sidebarOpen} />
+      <ContentWrapper>
+        <Sidebar isOpen={sidebarOpen} onNavigate={closeSidebarOnMobile} />
+        <MainContent>{children}</MainContent>
+        <Overlay
+          $isOpen={sidebarOpen && isMobile}
+          onClick={closeSidebarOnMobile}
+        />
+      </ContentWrapper>
+    </LayoutContainer>
   );
 }

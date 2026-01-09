@@ -2,7 +2,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getCurrentUser, fetchAuthSession, fetchUserAttributes } from "aws-amplify/auth";
+import {
+  getCurrentUser,
+  fetchAuthSession,
+  fetchUserAttributes,
+} from "aws-amplify/auth";
 import styled from "styled-components";
 import DashboardLayout from "../../components/DashboardLayout";
 import { createAuthenticatedClient } from "../../../shared/lib/graph-client";
@@ -143,7 +147,7 @@ export default function DashboardPage() {
         id: investorId,
         email: attributes.email,
       });
-      setInvestorName(name);
+      setInvestorName(attributes.given_name || "Investor");
 
       if (!investorId) {
         setError("Could not determine user id");

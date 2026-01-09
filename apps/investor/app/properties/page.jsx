@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getCurrentUser } from "aws-amplify/auth";
 import { generateClient } from "aws-amplify/api";
 import styled from "styled-components";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "../../components/DashboardLayout";
 
 const client = generateClient();
@@ -34,16 +35,16 @@ const FilterBar = styled.div`
 const FilterButton = styled.button`
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
-  border: 1px solid ${props => props.$active ? '#3b82f6' : '#d1d5db'};
-  background: ${props => props.$active ? '#3b82f6' : 'white'};
-  color: ${props => props.$active ? 'white' : '#374151'};
+  border: 1px solid ${(props) => (props.$active ? "#3b82f6" : "#d1d5db")};
+  background: ${(props) => (props.$active ? "#3b82f6" : "white")};
+  color: ${(props) => (props.$active ? "white" : "#374151")};
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
     border-color: #3b82f6;
-    ${props => !props.$active && 'background: #f3f4f6;'}
+    ${(props) => !props.$active && "background: #f3f4f6;"}
   }
 `;
 
@@ -69,7 +70,10 @@ const PropertyCard = styled.div`
 
 const PropertyImage = styled.div`
   height: 200px;
-  background: ${props => props.$url ? `url(${props.$url})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'};
+  background: ${(props) =>
+    props.$url
+      ? `url(${props.$url})`
+      : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"};
   background-size: cover;
   background-position: center;
   position: relative;
@@ -85,13 +89,18 @@ const StatusBadge = styled.span`
   font-weight: 600;
   text-transform: uppercase;
   backdrop-filter: blur(8px);
-  background: ${props => {
-    switch(props.$status) {
-      case 'COMPLETED': return 'rgba(16, 185, 129, 0.9)';
-      case 'DEVELOPMENT': return 'rgba(245, 158, 11, 0.9)';
-      case 'ACQUISITION': return 'rgba(59, 130, 246, 0.9)';
-      case 'SOLD': return 'rgba(107, 114, 128, 0.9)';
-      default: return 'rgba(156, 163, 175, 0.9)';
+  background: ${(props) => {
+    switch (props.$status) {
+      case "COMPLETED":
+        return "rgba(16, 185, 129, 0.9)";
+      case "DEVELOPMENT":
+        return "rgba(245, 158, 11, 0.9)";
+      case "ACQUISITION":
+        return "rgba(59, 130, 246, 0.9)";
+      case "SOLD":
+        return "rgba(107, 114, 128, 0.9)";
+      default:
+        return "rgba(156, 163, 175, 0.9)";
     }
   }};
   color: white;
@@ -192,19 +201,24 @@ export default function PropertiesPage() {
   const [displayedProperties, setDisplayedProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [view, setView] = useState('MY_PROPERTIES');
+  const [view, setView] = useState("MY_PROPERTIES");
+  const router = useRouter();
 
   useEffect(() => {
     loadProperties();
   }, []);
 
   useEffect(() => {
-    if (view === 'MY_PROPERTIES') {
+    if (view === "MY_PROPERTIES") {
       setDisplayedProperties(myProperties);
     } else {
       setDisplayedProperties(allProperties);
     }
   }, [view, myProperties, allProperties]);
+
+  const handleClick = (propertyId) => {
+    router.push(`/properties/${propertyId}`);
+  };
 
   const loadProperties = async () => {
     try {
@@ -230,7 +244,7 @@ export default function PropertiesPage() {
 
       setAllProperties(allPropsResult.data.listProperties);
     } catch (err) {
-      console.error('Error loading properties:', err);
+      console.error("Error loading properties:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -252,7 +266,7 @@ export default function PropertiesPage() {
       <DashboardLayout>
         <PageHeader>
           <Title>Error Loading Properties</Title>
-          <Subtitle style={{ color: '#ef4444' }}>{error}</Subtitle>
+          <Subtitle style={{ color: "#ef4444" }}>{error}</Subtitle>
         </PageHeader>
       </DashboardLayout>
     );
@@ -263,22 +277,22 @@ export default function PropertiesPage() {
       <PageHeader>
         <Title>Properties</Title>
         <Subtitle>
-          {view === 'MY_PROPERTIES' 
-            ? 'Properties you have invested in' 
-            : 'Browse all available investment opportunities'}
+          {view === "MY_PROPERTIES"
+            ? "Properties you have invested in"
+            : "Browse all available investment opportunities"}
         </Subtitle>
       </PageHeader>
 
       <FilterBar>
-        <FilterButton 
-          $active={view === 'MY_PROPERTIES'} 
-          onClick={() => setView('MY_PROPERTIES')}
+        <FilterButton
+          $active={view === "MY_PROPERTIES"}
+          onClick={() => setView("MY_PROPERTIES")}
         >
           My Properties ({myProperties.length})
         </FilterButton>
-        <FilterButton 
-          $active={view === 'ALL_PROPERTIES'} 
-          onClick={() => setView('ALL_PROPERTIES')}
+        <FilterButton
+          $active={view === "ALL_PROPERTIES"}
+          onClick={() => setView("ALL_PROPERTIES")}
         >
           All Properties ({allProperties.length})
         </FilterButton>
@@ -286,19 +300,28 @@ export default function PropertiesPage() {
 
       {displayedProperties.length === 0 ? (
         <EmptyState>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+          <h2
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: 600,
+              marginBottom: "0.5rem",
+            }}
+          >
             No properties found
           </h2>
-          <p style={{ color: '#6b7280' }}>
-            {view === 'MY_PROPERTIES' 
-              ? "You haven't invested in any properties yet." 
+          <p style={{ color: "#6b7280" }}>
+            {view === "MY_PROPERTIES"
+              ? "You haven't invested in any properties yet."
               : "No properties available at the moment."}
           </p>
         </EmptyState>
       ) : (
         <PropertiesGrid>
           {displayedProperties.map((property) => (
-            <PropertyCard key={property.id}>
+            <PropertyCard
+              key={property.id}
+              onClick={() => handleClick(property.id)}
+            >
               <PropertyImage $url={property.images?.[0]}>
                 <StatusBadge $status={property.status}>
                   {property.status}
@@ -308,13 +331,16 @@ export default function PropertiesPage() {
               <PropertyContent>
                 <PropertyAddress>{property.address}</PropertyAddress>
                 <PropertyType>
-                  {property.propertyType?.replace('_', ' ')} • {property.postcode}
+                  {property.propertyType?.replace("_", " ")} •{" "}
+                  {property.postcode}
                 </PropertyType>
 
                 <PropertyStats>
                   <Stat>
                     <StatLabel>Current Value</StatLabel>
-                    <StatValue>£{property.currentValuation?.toLocaleString() || '0'}</StatValue>
+                    <StatValue>
+                      £{property.currentValuation?.toLocaleString() || "0"}
+                    </StatValue>
                   </Stat>
 
                   {property.equityPercentage !== undefined ? (
@@ -325,30 +351,38 @@ export default function PropertiesPage() {
                       </Stat>
                       <Stat>
                         <StatLabel>Your Investment</StatLabel>
-                        <StatValue>£{property.investmentAmount?.toLocaleString() || '0'}</StatValue>
+                        <StatValue>
+                          £{property.investmentAmount?.toLocaleString() || "0"}
+                        </StatValue>
                       </Stat>
                       <Stat>
                         <StatLabel>Current Worth</StatLabel>
-                        <StatValue>£{property.investmentValue?.toLocaleString() || '0'}</StatValue>
+                        <StatValue>
+                          £{property.investmentValue?.toLocaleString() || "0"}
+                        </StatValue>
                       </Stat>
                     </>
                   ) : (
                     <>
                       <Stat>
                         <StatLabel>Purchase Price</StatLabel>
-                        <StatValue>£{property.purchasePrice?.toLocaleString() || '0'}</StatValue>
+                        <StatValue>
+                          £{property.purchasePrice?.toLocaleString() || "0"}
+                        </StatValue>
                       </Stat>
                       <Stat>
                         <StatLabel>Acquired</StatLabel>
                         <StatValue>
-                          {property.acquisitionDate 
-                            ? new Date(property.acquisitionDate).toLocaleDateString()
-                            : 'N/A'}
+                          {property.acquisitionDate
+                            ? new Date(
+                                property.acquisitionDate
+                              ).toLocaleDateString()
+                            : "N/A"}
                         </StatValue>
                       </Stat>
                       <Stat>
                         <StatLabel>City</StatLabel>
-                        <StatValue>{property.city || 'London'}</StatValue>
+                        <StatValue>{property.city || "London"}</StatValue>
                       </Stat>
                     </>
                   )}
