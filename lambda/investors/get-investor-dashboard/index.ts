@@ -33,7 +33,7 @@ export const handler = async (event: AppSyncEvent) => {
     // Authorization check
     const groups = event.identity?.claims?.["cognito:groups"] || [];
     const isAdmin = groups.includes("Admin");
-    const userSub = event.identity?.sub || event.identity?.claims?.sub;
+    const userSub = event.identity?.sub || event.identity?.username;
 
     logger.info("Authorization check", {
       userSub,

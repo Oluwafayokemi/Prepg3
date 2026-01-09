@@ -6,25 +6,29 @@ export class AppError extends Error {
     public code?: string
   ) {
     super(message);
-    this.name = 'AppError';
+    this.name = "AppError";
   }
 }
 
 export class ValidationError extends AppError {
   constructor(message: string) {
-    super(400, message, 'VALIDATION_ERROR');
+    super(400, message, "VALIDATION_ERROR");
   }
 }
-
+export class ConflictError extends AppError {
+  constructor(message: string) {
+    super(409, message, "CONFLICT_ERROR");
+  }
+}
 export class NotFoundError extends AppError {
   constructor(resource: string) {
-    super(404, `${resource} not found`, 'NOT_FOUND');
+    super(404, `${resource} not found`, "NOT_FOUND");
   }
 }
 
 export class UnauthorizedError extends AppError {
-  constructor(message: string = 'Unauthorized') {
-    super(403, message, 'UNAUTHORIZED');
+  constructor(message: string = "Unauthorized") {
+    super(403, message, "UNAUTHORIZED");
   }
 }
 
@@ -39,13 +43,13 @@ export function handleError(error: any) {
     };
   }
 
-  console.error('Unexpected error:', error);
-  
+  console.error("Unexpected error:", error);
+
   return {
     statusCode: 500,
     body: JSON.stringify({
-      error: 'Internal server error',
-      code: 'INTERNAL_ERROR',
+      error: "Internal server error",
+      code: "INTERNAL_ERROR",
     }),
   };
 }
