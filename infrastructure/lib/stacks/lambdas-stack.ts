@@ -56,6 +56,7 @@ export class LambdasStack extends cdk.Stack {
     collectKYCMetrics: cdk.aws_lambda.Function;
     submitIdentityDocument: cdk.aws_lambda.Function;
     submitProofOfAddress: cdk.aws_lambda.Function;
+    manageUserRoles: cdk.aws_lambda.Function;
   };
 
   constructor(scope: Construct, id: string, props: LambdasStackProps) {
@@ -143,7 +144,7 @@ export class LambdasStack extends cdk.Stack {
           "cognito-idp:AdminAddUserToGroup",
         ],
         resources: [props.userPool.userPoolArn],
-      })
+      }),
     );
 
     // Update Investor
@@ -173,7 +174,7 @@ export class LambdasStack extends cdk.Stack {
         environment: kycEnv,
         timeout: LAMBDA_DEFAULTS.TIMEOUT_SECONDS.LONG,
         memorySize: LAMBDA_DEFAULTS.MEMORY_MB.MEDIUM,
-      }
+      },
     );
 
     // Submit Proof of Address - USES KYC VERIFICATION
@@ -190,16 +191,16 @@ export class LambdasStack extends cdk.Stack {
         environment: kycEnv,
         timeout: LAMBDA_DEFAULTS.TIMEOUT_SECONDS.LONG,
         memorySize: LAMBDA_DEFAULTS.MEMORY_MB.MEDIUM,
-      }
+      },
     );
 
     submitIdentityDocumentLambda.grantTableAccess(
       props.tables.investors,
-      "readwrite"
+      "readwrite",
     );
     submitProofOfAddressLambda.grantTableAccess(
       props.tables.investors,
-      "readwrite"
+      "readwrite",
     );
     updateInvestorLambda.grantTableAccess(props.tables.investors, "readwrite");
 
@@ -217,25 +218,25 @@ export class LambdasStack extends cdk.Stack {
         environment: commonEnv,
         timeout: LAMBDA_DEFAULTS.TIMEOUT_SECONDS.LONG,
         memorySize: LAMBDA_DEFAULTS.MEMORY_MB.LARGE,
-      }
+      },
     );
 
     getInvestorDashboardLambda.grantTableAccess(props.tables.investors, "read");
     getInvestorDashboardLambda.grantTableAccess(
       props.tables.investments,
-      "read"
+      "read",
     );
     getInvestorDashboardLambda.grantTableAccess(
       props.tables.transactions,
-      "read"
+      "read",
     );
     getInvestorDashboardLambda.grantTableAccess(
       props.tables.notifications,
-      "read"
+      "read",
     );
     getInvestorDashboardLambda.grantTableAccess(
       props.tables.properties,
-      "read"
+      "read",
     );
 
     // ===========================================
@@ -258,16 +259,16 @@ export class LambdasStack extends cdk.Stack {
     createInvestmentLambda.grantTableAccess(props.tables.investments, "write");
     createInvestmentLambda.grantTableAccess(
       props.tables.properties,
-      "readwrite"
+      "readwrite",
     );
     createInvestmentLambda.grantTableAccess(
       props.tables.investors,
-      "readwrite"
+      "readwrite",
     );
     createInvestmentLambda.grantTableAccess(props.tables.transactions, "write");
     createInvestmentLambda.grantTableAccess(
       props.tables.notifications,
-      "write"
+      "write",
     );
 
     // Calculate ROI
@@ -296,7 +297,7 @@ export class LambdasStack extends cdk.Stack {
     });
 
     dailyROIRule.addTarget(
-      new targets.LambdaFunction(calculateROILambda.function)
+      new targets.LambdaFunction(calculateROILambda.function),
     );
 
     // ===========================================
@@ -354,11 +355,11 @@ export class LambdasStack extends cdk.Stack {
 
     createTransactionLambda.grantTableAccess(
       props.tables.transactions,
-      "write"
+      "write",
     );
     createTransactionLambda.grantTableAccess(
       props.tables.investors,
-      "readwrite"
+      "readwrite",
     );
 
     // List Transactions
@@ -395,7 +396,7 @@ export class LambdasStack extends cdk.Stack {
     uploadDocumentLambda.grantTableAccess(props.tables.documents, "write");
     uploadDocumentLambda.grantBucketAccess(
       props.buckets.documents,
-      "readwrite"
+      "readwrite",
     );
     uploadDocumentLambda.grantTableAccess(props.tables.notifications, "write");
 
@@ -413,12 +414,12 @@ export class LambdasStack extends cdk.Stack {
         environment: commonEnv,
         timeout: LAMBDA_DEFAULTS.TIMEOUT_SECONDS.SHORT,
         memorySize: LAMBDA_DEFAULTS.MEMORY_MB.SMALL,
-      }
+      },
     );
 
     generatePresignedUrlLambda.grantBucketAccess(
       props.buckets.documents,
-      "read"
+      "read",
     );
     generatePresignedUrlLambda.grantTableAccess(props.tables.documents, "read");
 
@@ -446,13 +447,13 @@ export class LambdasStack extends cdk.Stack {
       new iam.PolicyStatement({
         actions: ["ses:SendEmail", "ses:SendRawEmail"],
         resources: ["*"],
-      })
+      }),
     );
 
     sendNotificationLambda.grantTableAccess(props.tables.investors, "read");
     sendNotificationLambda.grantTableAccess(
       props.tables.notifications,
-      "write"
+      "write",
     );
 
     // ===========================================
@@ -474,21 +475,53 @@ export class LambdasStack extends cdk.Stack {
 
     createDevelopmentLambda.grantTableAccess(
       props.tables.developments,
-      "write"
+      "write",
     );
     createDevelopmentLambda.grantTableAccess(props.tables.investments, "read");
     createDevelopmentLambda.grantTableAccess(
       props.tables.notifications,
-      "write"
+      "write",
     );
     createDevelopmentLambda.grantBucketAccess(
       props.buckets.images,
-      "readwrite"
+      "readwrite",
     );
 
     // ===========================================
     // ADMIN LAMBDAS
     // ===========================================
+
+    const manageUserRolesLambda = new ApiLambda(this, "ManageUserRoles", {
+      functionName: "manage-user-roles",
+      handler: "admin/manage-user-roles/index.handler",
+      environmentName: props.environmentName,
+      api: props.api,
+      typeName: "Mutation",
+      fieldName: "manageUserRole",
+      environment: {
+        ...commonEnv,
+        AUDIT_TABLE: props.tables.audit?.tableName || "",
+      },
+      timeout: LAMBDA_DEFAULTS.TIMEOUT_SECONDS.MEDIUM,
+      memorySize: LAMBDA_DEFAULTS.MEMORY_MB.SMALL,
+    });
+
+    // Grant permissions
+    manageUserRolesLambda.function.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:AdminRemoveUserFromGroup",
+          "cognito-idp:AdminListGroupsForUser",
+          "cognito-idp:ListUsersInGroup",
+        ],
+        resources: [props.userPool.userPoolArn],
+      }),
+    );
+
+    if (props.tables.audit) {
+      manageUserRolesLambda.grantTableAccess(props.tables.audit, "write");
+    }
 
     // Get Admin Dashboard
     const getAdminDashboardLambda = new ApiLambda(this, "GetAdminDashboard", {
@@ -531,14 +564,14 @@ export class LambdasStack extends cdk.Stack {
       new iam.PolicyStatement({
         actions: ["ses:SendEmail", "ses:SendRawEmail"],
         resources: ["*"],
-      })
+      }),
     );
 
     approveKYCLambda.function.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["cognito-idp:AdminAddUserToGroup"],
         resources: [props.userPool.userPoolArn],
-      })
+      }),
     );
 
     // Reject KYC
@@ -564,7 +597,7 @@ export class LambdasStack extends cdk.Stack {
       new iam.PolicyStatement({
         actions: ["ses:SendEmail", "ses:SendRawEmail"],
         resources: ["*"],
-      })
+      }),
     );
 
     // Request More Info
@@ -587,7 +620,7 @@ export class LambdasStack extends cdk.Stack {
       new iam.PolicyStatement({
         actions: ["ses:SendEmail", "ses:SendRawEmail"],
         resources: ["*"],
-      })
+      }),
     );
 
     // List Pending KYC
@@ -645,7 +678,7 @@ export class LambdasStack extends cdk.Stack {
     });
 
     collectMetricsRule.addTarget(
-      new targets.LambdaFunction(collectKYCMetricsLambda.function)
+      new targets.LambdaFunction(collectKYCMetricsLambda.function),
     );
 
     // Grant CloudWatch permissions
@@ -653,7 +686,7 @@ export class LambdasStack extends cdk.Stack {
       new iam.PolicyStatement({
         actions: ["cloudwatch:PutMetricData"],
         resources: ["*"],
-      })
+      }),
     );
 
     // ===========================================
@@ -683,6 +716,7 @@ export class LambdasStack extends cdk.Stack {
       collectKYCMetrics: collectKYCMetricsLambda.function,
       submitIdentityDocument: submitIdentityDocumentLambda.function,
       submitProofOfAddress: submitProofOfAddressLambda.function,
+      manageUserRoles: manageUserRolesLambda.function,
     };
 
     // ===========================================
@@ -705,6 +739,7 @@ export class LambdasStack extends cdk.Stack {
         notifications: 1,
         developments: 1,
         admin: 6,
+        userManagement: 1,
         scheduled: 2,
       }),
       description: "Lambda functions by category",

@@ -4,8 +4,13 @@ import { UpdateCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "@shared/db/client";
 import { Logger } from "@shared/utils/logger";
 import { validateRequired } from "@shared/utils/validators";
-import { ValidationError, UnauthorizedError, NotFoundError } from "@shared/utils/errors";
+import {
+  ValidationError,
+  UnauthorizedError,
+  NotFoundError,
+} from "@shared/utils/errors";
 import type { AppSyncEvent } from "../../shared/types";
+import { PermissionChecker } from "@shared/utils/permissions";
 
 const logger = new Logger("CompleteProfile");
 
@@ -40,9 +45,7 @@ export const handler = async (event: AppSyncEvent) => {
     validateRequired(input.investorId, "investorId");
 
     // Authorization: Users can only update their own profile
-    const userId = event.identity?.sub || event.identity?.username;
-    const groups = event.identity?.claims?.["cognito:groups"] || [];
-    const isAdmin = groups.includes("Admin");
+    const userId = PermissionChecker.getUserId(event);
 
     if (!userId) {
       throw new UnauthorizedError("Not authenticated");
@@ -53,18 +56,19 @@ export const handler = async (event: AppSyncEvent) => {
       new GetCommand({
         TableName: process.env.INVESTORS_TABLE!,
         Key: { id: input.investorId, isCurrent: "CURRENT" },
-      })
+      }),
     );
 
     if (!getResult.Item) {
       throw new NotFoundError("Investor not found");
     }
 
-    // Check authorization
-    const investorUserId = getResult.Item.userId || getResult.Item.id;
-    if (investorUserId !== userId && !isAdmin) {
-      throw new UnauthorizedError("You can only update your own profile");
-    }
+    PermissionChecker.requireOwnerOrAdmin(
+      event,
+      getResult.Item.userId || getResult.Item.id,
+      "profile",
+    );
+    logger.info("Authorization passed");
 
     // Build update expression
     const updateExpressions: string[] = [];
@@ -100,7 +104,9 @@ export const handler = async (event: AppSyncEvent) => {
         county: input.mailingAddress.county?.trim() || null,
         postcode: input.mailingAddress.postcode.trim().toUpperCase(),
         country: input.mailingAddress.country.trim(),
-        residencySince: input.mailingAddress.residencySince || new Date().toISOString().split('T')[0],
+        residencySince:
+          input.mailingAddress.residencySince ||
+          new Date().toISOString().split("T")[0],
         isCurrentAddress: input.mailingAddress.isCurrentAddress ?? false,
       };
     }
@@ -130,7 +136,9 @@ export const handler = async (event: AppSyncEvent) => {
     }
 
     if (input.preferredContactMethod !== undefined) {
-      updateExpressions.push("#preferredContactMethod = :preferredContactMethod");
+      updateExpressions.push(
+        "#preferredContactMethod = :preferredContactMethod",
+      );
       attributeNames["#preferredContactMethod"] = "preferredContactMethod";
       attributeValues[":preferredContactMethod"] = input.preferredContactMethod;
     }
@@ -153,7 +161,7 @@ export const handler = async (event: AppSyncEvent) => {
         ExpressionAttributeNames: attributeNames,
         ExpressionAttributeValues: attributeValues,
         ReturnValues: "ALL_NEW",
-      })
+      }),
     );
 
     logger.info("Profile completed successfully", {
@@ -162,7 +170,6 @@ export const handler = async (event: AppSyncEvent) => {
     });
 
     return result.Attributes;
-
   } catch (error) {
     logger.error("Error completing profile", error);
     throw error;

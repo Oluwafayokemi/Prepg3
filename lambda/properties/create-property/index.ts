@@ -6,6 +6,7 @@ import { validateRequired, validatePositiveNumber } from '../../shared/utils/val
 import { handleError } from '../../shared/utils/errors';
 import { v4 as uuidv4 } from 'uuid';
 import type { AppSyncEvent } from '../../shared/types';
+import { PermissionChecker } from '@shared/utils/permissions';
 
 const logger = new Logger('CreateProperty');
 
@@ -36,8 +37,8 @@ export const handler = async (event: AppSyncEvent) => {
     validateRequired(input.acquisitionDate, 'acquisitionDate');
 
     // Authorization check (only admins can create properties)
-    const groups = event.identity.claims['cognito:groups'] || [];
-    if (!groups.includes('Admin')) {
+    const isAdmin = PermissionChecker.isAdmin(event);
+    if (!isAdmin) {
       throw new Error('Only administrators can create properties');
     }
 

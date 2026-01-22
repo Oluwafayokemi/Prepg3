@@ -1,0 +1,210 @@
+type UserInfo {
+  userId: ID!
+  email: String!
+  firstName: String
+  lastName: String
+  emailVerified: Boolean!
+  accountStatus: String!
+  roles: [String!]!
+  highestRole: String!
+  createdAt: AWSDateTime!
+  lastModifiedAt: AWSDateTime!
+  mfaEnabled: Boolean!
+}
+
+type UserInfoConnection {
+  items: [UserInfo!]!
+  nextToken: String
+  totalCount: Int
+}
+
+type UserPermissions {
+  userId: String!
+  email: String!
+  role: String!
+  groups: [String!]!
+  canApproveKYC: Boolean!
+  canRejectKYC: Boolean!
+  canManageUsers: Boolean!
+  canDeleteData: Boolean!
+  canUpdateProperties: Boolean!
+  canViewAllInvestors: Boolean!
+  canManageRoles: Boolean!
+  canAccessAuditLogs: Boolean!
+  canCreateProperties: Boolean!
+  canInvest: Boolean!
+}
+
+type RoleInfo {
+  roleName: String!
+  userCount: Int!
+  description: String!
+  precedence: Int!
+}
+
+input ListUsersFilter {
+  role: String
+  searchTerm: String
+  accountStatus: String
+}
+
+input ManageRoleInput {
+  userEmail: String!
+  action: RoleAction!
+  role: String!
+  confirmDangerous: Boolean
+}
+
+enum RoleAction {
+  ADD
+  REMOVE
+}
+
+type ManageRoleResponse {
+  success: Boolean!
+  userEmail: String!
+  action: RoleAction!
+  role: String!
+  currentRoles: [String!]!
+  message: String!
+}
+
+type RoleChangeAudit {
+  id: ID!
+  timestamp: AWSDateTime!
+  performedBy: String!
+  targetUser: String!
+  action: RoleAction!
+  role: String!
+  previousRoles: [String!]!
+  newRoles: [String!]!
+  reason: String
+}
+
+type RoleChangeAuditConnection {
+  items: [RoleChangeAudit!]!
+  nextToken: String
+}
+
+type DataDeletionResult {
+  success: Boolean!
+  deletedCount: Int!
+  entityType: String!
+  affectedRecords: [String!]
+  errors: [String!]
+  timestamp: AWSDateTime!
+}
+
+type UserDeletionResult {
+  success: Boolean!
+  userId: ID!
+  email: String!
+  deletedRecords: DeletedRecords!
+  timestamp: AWSDateTime!
+}
+
+type DeletedRecords {
+  investor: Boolean!
+  investments: Int!
+  transactions: Int!
+  documents: Int!
+  notifications: Int!
+  auditLogs: Boolean! # Kept for compliance
+}
+
+input DeletePropertyInput {
+  propertyId: ID!
+  confirmDangerous: Boolean!
+  reason: String!
+}
+
+input DeleteInvestmentInput {
+  investmentId: ID!
+  confirmDangerous: Boolean!
+  reason: String!
+}
+
+input DeleteUserInput {
+  userId: ID!
+  deleteInvestorData: Boolean!
+  transferInvestmentsTo: ID # Transfer to another user
+  confirmDangerous: Boolean!
+  reason: String!
+}
+
+input BulkDeleteInput {
+  entityType: String!
+  filters: AWSJSON
+  olderThan: AWSDateTime
+  confirmDangerous: Boolean!
+  reason: String!
+}
+
+input PurgeAuditLogsInput {
+  olderThan: AWSDateTime!
+  keepCriticalEvents: Boolean!
+  confirmDangerous: Boolean!
+  reason: String!
+}
+
+type DangerousOperation {
+  operation: String!
+  description: String!
+  impact: String!
+  requiresConfirmation: Boolean!
+  estimatedAffectedRecords: Int
+  requiredRole: String!
+}
+
+type SystemOperation {
+  operation: String!
+  status: String!
+  startTime: AWSDateTime!
+  endTime: AWSDateTime
+  recordsProcessed: Int
+  errors: [String!]
+  result: AWSJSON
+}
+
+input DatabaseMaintenanceInput {
+  operation: String! # "VACUUM", "REINDEX", "OPTIMIZE"
+  tables: [String!]
+  confirmDangerous: Boolean!
+}
+
+extend type Query {
+  getMyPermissions: UserPermissions!
+
+  listUsers(
+    filter: ListUsersFilter
+    limit: Int
+    nextToken: String
+  ): UserInfoConnection! @aws_auth(cognito_groups: ["SuperAdmin", "Admin"])
+
+  getUserInfo(userId: ID!): UserInfo!
+    @aws_auth(cognito_groups: ["SuperAdmin", "Admin"])
+
+  listRoles: [RoleInfo!]! @aws_auth(cognito_groups: ["SuperAdmin", "Admin"])
+
+  listUsersInRole(
+    roleName: String!
+    limit: Int
+    nextToken: String
+  ): UserInfoConnection! @aws_auth(cognito_groups: ["SuperAdmin", "Admin"])
+
+  listDangerousOperations: [DangerousOperation!]!
+    @aws_auth(cognito_groups: ["SuperAdmin"])
+
+  listRoleChanges(
+    userId: ID
+    limit: Int
+    nextToken: String
+  ): RoleChangeAuditConnection!
+    @aws_auth(cognito_groups: ["SuperAdmin", "Admin"])
+
+  previewDeletion(entityType: String!, entityId: ID!): DataDeletionResult!
+    @aws_auth(cognito_groups: ["SuperAdmin"])
+
+  listSystemOperations(limit: Int, nextToken: String): [SystemOperation!]!
+    @aws_auth(cognito_groups: ["SuperAdmin"])
+}

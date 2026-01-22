@@ -17,6 +17,7 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { v4 as uuidv4 } from "uuid";
+import { PermissionChecker } from "@shared/utils/permissions";
 
 const logger = new Logger("ApproveKYC");
 const cognitoClient = new CognitoIdentityProviderClient({});
@@ -31,18 +32,17 @@ export const handler = async (event: AppSyncEvent) => {
 
     validateRequired(investorId, "investorId");
 
-    // Authorization: Only admins or compliance officers can approve KYC
-    const groups = event.identity?.claims?.["cognito:groups"] || [];
-    const isAdmin = groups.includes("Admin");
-    const isCompliance = groups.includes("Compliance");
+    const isCompliance = PermissionChecker.isCompliance(event);
 
-    if (!isAdmin && !isCompliance) {
+    if (!isCompliance) {
       throw new UnauthorizedError(
-        "Only admins or compliance officers can approve KYC"
+        "Only admins or compliance officers can approve KYC",
       );
     }
 
-    const approvedBy = event.identity?.claims?.email || event.identity?.sub;
+    const approvedBy =
+      PermissionChecker.getUserEmail(event) ||
+      PermissionChecker.getUserId(event) || "system";
     const approverName = event.identity?.claims?.name || approvedBy;
 
     // Get current investor version
@@ -50,7 +50,7 @@ export const handler = async (event: AppSyncEvent) => {
       new GetCommand({
         TableName: process.env.INVESTORS_TABLE!,
         Key: { id: investorId, version: "CURRENT" }, // Adjust based on your table structure
-      })
+      }),
     );
 
     if (!getResult.Item) {
@@ -69,14 +69,14 @@ export const handler = async (event: AppSyncEvent) => {
     if (investor.identityVerification?.submittedAt) {
       await MetricsService.logKYCProcessingTime(
         investor.identityVerification.submittedAt,
-        now,
-        verificationMethod
+        new Date().toISOString(),
+        verificationMethod,
       );
     }
     // Validate investor has submitted required documents
     if (!investor.identityVerification) {
       throw new ValidationError(
-        "Investor has not submitted identity documents"
+        "Investor has not submitted identity documents",
       );
     }
 
@@ -122,7 +122,7 @@ export const handler = async (event: AppSyncEvent) => {
         ExpressionAttributeValues: {
           ":historical": "HISTORICAL",
         },
-      })
+      }),
     );
 
     // Insert new version
@@ -130,7 +130,7 @@ export const handler = async (event: AppSyncEvent) => {
       new PutCommand({
         TableName: process.env.INVESTORS_TABLE!,
         Item: newVersion,
-      })
+      }),
     );
 
     logger.info("KYC approved successfully", {
@@ -145,7 +145,7 @@ export const handler = async (event: AppSyncEvent) => {
           UserPoolId: process.env.USER_POOL_ID!,
           Username: investor.email,
           GroupName: "VerifiedInvestors",
-        })
+        }),
       );
       logger.info("User added to VerifiedInvestors group");
     } catch (cognitoError) {
@@ -202,7 +202,7 @@ async function sendKYCApprovedNotification(investor: any) {
       new PutCommand({
         TableName: process.env.NOTIFICATIONS_TABLE!,
         Item: notification,
-      })
+      }),
     );
 
     logger.info("Notification created", { notificationId: notification.id });
@@ -246,7 +246,7 @@ async function createAuditLog(params: {
       new PutCommand({
         TableName: process.env.AUDIT_TABLE!,
         Item: auditLog,
-      })
+      }),
     );
 
     logger.info("Audit log created", { auditLogId: auditLog.id });
@@ -326,7 +326,7 @@ async function sendWelcomeEmail(investor: any) {
                       <li>Account Status: <strong style="color: green;">Active ✓</strong></li>
                       <li>Verification Level: <strong>Fully Verified</strong></li>
                       <li>KYC Valid Until: <strong>${new Date(
-                        investor.kycExpiryDate
+                        investor.kycExpiryDate,
                       ).toLocaleDateString()}</strong></li>
                     </ul>
                     

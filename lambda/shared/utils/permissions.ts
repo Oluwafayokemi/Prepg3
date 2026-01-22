@@ -3,12 +3,11 @@
 import { UnauthorizedError } from "./errors";
 
 export class PermissionChecker {
-  
   /**
    * Get user groups from Cognito claims
    */
   static getUserGroups(event: any): string[] {
-    return event.identity?.claims?.['cognito:groups'] || [];
+    return event.identity?.claims?.["cognito:groups"] || [];
   }
 
   /**
@@ -30,7 +29,7 @@ export class PermissionChecker {
    */
   static hasAnyRole(event: any, roles: string[]): boolean {
     const userGroups = this.getUserGroups(event);
-    return roles.some(role => userGroups.includes(role));
+    return roles.some((role) => userGroups.includes(role));
   }
 
   /**
@@ -38,7 +37,7 @@ export class PermissionChecker {
    */
   static hasAllRoles(event: any, roles: string[]): boolean {
     const userGroups = this.getUserGroups(event);
-    return roles.every(role => userGroups.includes(role));
+    return roles.every((role) => userGroups.includes(role));
   }
 
   // ===========================================
@@ -49,42 +48,42 @@ export class PermissionChecker {
    * Check if user is SuperAdmin (highest privilege)
    */
   static isSuperAdmin(event: any): boolean {
-    return this.getUserGroups(event).includes('SuperAdmin');
+    return this.getUserGroups(event).includes("SuperAdmin");
   }
 
   /**
    * Check if user is Admin or SuperAdmin
    */
   static isAdmin(event: any): boolean {
-    return this.hasAnyRole(event, ['SuperAdmin', 'Admin']);
+    return this.hasAnyRole(event, ["SuperAdmin", "Admin"]);
   }
 
   /**
    * Check if user is Compliance officer (or higher)
    */
   static isCompliance(event: any): boolean {
-    return this.hasAnyRole(event, ['SuperAdmin', 'Admin', 'Compliance']);
+    return this.hasAnyRole(event, ["SuperAdmin", "Admin", "Compliance"]);
   }
 
   /**
    * Check if user is Property Manager (or higher)
    */
   static isPropertyManager(event: any): boolean {
-    return this.hasAnyRole(event, ['SuperAdmin', 'Admin', 'PropertyManager']);
+    return this.hasAnyRole(event, ["SuperAdmin", "Admin", "PropertyManager"]);
   }
 
   /**
    * Check if user is Support (or higher)
    */
   static isSupport(event: any): boolean {
-    return this.hasAnyRole(event, ['SuperAdmin', 'Admin', 'Support']);
+    return this.hasAnyRole(event, ["SuperAdmin", "Admin", "Support"]);
   }
 
   /**
    * Check if user is a verified investor
    */
   static isVerifiedInvestor(event: any): boolean {
-    return this.getUserGroups(event).includes('VerifiedInvestors');
+    return this.getUserGroups(event).includes("VerifiedInvestors");
   }
 
   // ===========================================
@@ -96,7 +95,7 @@ export class PermissionChecker {
    */
   static requireSuperAdmin(event: any): void {
     if (!this.isSuperAdmin(event)) {
-      throw new UnauthorizedError('Super Admin access required');
+      throw new UnauthorizedError("Super Admin access required");
     }
   }
 
@@ -105,7 +104,7 @@ export class PermissionChecker {
    */
   static requireAdmin(event: any): void {
     if (!this.isAdmin(event)) {
-      throw new UnauthorizedError('Admin access required');
+      throw new UnauthorizedError("Admin access required");
     }
   }
 
@@ -114,7 +113,7 @@ export class PermissionChecker {
    */
   static requireCompliance(event: any): void {
     if (!this.isCompliance(event)) {
-      throw new UnauthorizedError('Compliance officer access required');
+      throw new UnauthorizedError("Compliance officer access required");
     }
   }
 
@@ -123,7 +122,7 @@ export class PermissionChecker {
    */
   static requirePropertyManager(event: any): void {
     if (!this.isPropertyManager(event)) {
-      throw new UnauthorizedError('Property manager access required');
+      throw new UnauthorizedError("Property manager access required");
     }
   }
 
@@ -132,19 +131,25 @@ export class PermissionChecker {
    */
   static requireVerifiedInvestor(event: any): void {
     if (!this.isVerifiedInvestor(event)) {
-      throw new UnauthorizedError('Verified investor access required');
+      throw new UnauthorizedError("Verified investor access required");
     }
   }
 
   /**
    * Require user to be the owner of a resource or admin
    */
-  static requireOwnerOrAdmin(event: any, resourceOwnerId: string): void {
+  static requireOwnerOrAdmin(
+    event: any,
+    resourceOwnerId: string,
+    resourceType: string = "resource",
+  ): void {
     const userId = this.getUserId(event);
     const isAdmin = this.isAdmin(event);
 
     if (userId !== resourceOwnerId && !isAdmin) {
-      throw new UnauthorizedError('You can only access your own resources');
+      throw new UnauthorizedError(
+        `You can only access your own ${resourceType}`,
+      );
     }
   }
 
@@ -157,16 +162,16 @@ export class PermissionChecker {
    */
   static getHighestRole(event: any): string {
     const groups = this.getUserGroups(event);
-    
-    if (groups.includes('SuperAdmin')) return 'SuperAdmin';
-    if (groups.includes('Admin')) return 'Admin';
-    if (groups.includes('Compliance')) return 'Compliance';
-    if (groups.includes('PropertyManager')) return 'PropertyManager';
-    if (groups.includes('Support')) return 'Support';
-    if (groups.includes('VerifiedInvestors')) return 'VerifiedInvestor';
-    if (groups.includes('Investors')) return 'Investor';
-    
-    return 'Unknown';
+
+    if (groups.includes("SuperAdmin")) return "SuperAdmin";
+    if (groups.includes("Admin")) return "Admin";
+    if (groups.includes("Compliance")) return "Compliance";
+    if (groups.includes("PropertyManager")) return "PropertyManager";
+    if (groups.includes("Support")) return "Support";
+    if (groups.includes("VerifiedInvestors")) return "VerifiedInvestor";
+    if (groups.includes("Investors")) return "Investor";
+
+    return "Unknown";
   }
 
   /**
@@ -193,24 +198,24 @@ export class PermissionChecker {
 
     return {
       role: this.getHighestRole(event),
-      
+
       // KYC operations
       canApproveKYC: isCompliance,
       canRejectKYC: isCompliance,
-      
+
       // User management
       canManageUsers: isAdmin,
       canManageRoles: isSuperAdmin, // Only super admin!
-      
+
       // Data operations
       canDeleteData: isSuperAdmin, // Only super admin can delete!
       canViewAllInvestors: isAdmin || isCompliance,
       canAccessAuditLogs: isAdmin,
-      
+
       // Property operations
       canCreateProperties: isAdmin,
       canUpdateProperties: isPropertyManager,
-      
+
       // Investment operations
       canInvest: isVerified,
     };
@@ -227,8 +232,8 @@ export class PermissionChecker {
     permissions: ReturnType<typeof PermissionChecker.getPermissions>;
   } {
     return {
-      userId: this.getUserId(event) || '',
-      email: this.getUserEmail(event) || '',
+      userId: this.getUserId(event) || "",
+      email: this.getUserEmail(event) || "",
       role: this.getHighestRole(event),
       groups: this.getUserGroups(event),
       permissions: this.getPermissions(event),

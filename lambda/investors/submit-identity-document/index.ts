@@ -10,6 +10,7 @@ import {
 import { MetricsService } from "@shared/utils/metrics";
 import type { AppSyncEvent } from "../../shared/types";
 import { kycVerificationService } from "@shared/services/kyc-verification-service";
+import { PermissionChecker } from "@shared/utils/permissions";
 
 const logger = new Logger("SubmitIdentityDocument");
 
@@ -60,7 +61,7 @@ export const handler = async (
     }
 
     // Authorization check
-    const userId = event.identity?.sub || event.identity?.username;
+    const userId = PermissionChecker.getUserId(event);
     if (!userId) {
       throw new UnauthorizedError("Not authenticated");
     }
@@ -81,8 +82,7 @@ export const handler = async (
 
     // Check authorization
     const investorUserId = investor.userId || investor.id;
-    const groups = event.identity?.claims?.["cognito:groups"] || [];
-    const isAdmin = groups.includes("Admin");
+    const isAdmin = PermissionChecker.isAdmin(event);
 
     if (investorUserId !== userId && !isAdmin) {
       throw new UnauthorizedError(
@@ -91,6 +91,7 @@ export const handler = async (
     }
 
     const now = new Date().toISOString();
+    logger.info("Authorization passed");
 
     // ============================================
     // USE KYC VERIFICATION SERVICE

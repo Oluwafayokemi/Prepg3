@@ -11,6 +11,7 @@ import {
   ValidationError,
 } from "@shared/utils/errors";
 import type { AppSyncEvent } from "../../shared/types";
+import { PermissionChecker } from "@shared/utils/permissions";
 
 const logger = new Logger("UpdateProperty");
 
@@ -87,20 +88,19 @@ export const handler = async (event: AppSyncEvent) => {
     validateRequired(input.id, "id");
 
     // Get user context
-    const userId = event.identity?.sub || event.identity?.username;
-    const userEmail = event.identity?.claims?.email;
-    const groups = event.identity?.claims?.["cognito:groups"] || [];
-    const isAdmin = groups.includes("Admin");
-    const isPropertyManager = groups.includes("PropertyManager");
-
+    const userId = PermissionChecker.getUserId(event);
+    const userEmail = PermissionChecker.getUserEmail(event);
+    const isPropertyManager = PermissionChecker.isPropertyManager(event);
+    const isAdmin = PermissionChecker.isAdmin(event);
+    
     if (!userId) {
       throw new UnauthorizedError("Not authenticated");
     }
 
     // Only admins and property managers can update properties
-    if (!isAdmin && !isPropertyManager) {
+    if (!isPropertyManager) {
       throw new UnauthorizedError(
-        "Only admins or property managers can update properties"
+        "Only admins or property managers can update properties",
       );
     }
 
@@ -115,7 +115,7 @@ export const handler = async (event: AppSyncEvent) => {
           ":current": "CURRENT",
         },
         Limit: 1,
-      })
+      }),
     );
 
     if (!currentResult.Items || currentResult.Items.length === 0) {
@@ -160,7 +160,7 @@ export const handler = async (event: AppSyncEvent) => {
     const changeReason = ChangeReasonHandler.getChangeReason(
       changedFields,
       input.changeReason,
-      { userId: userEmail || userId }
+      { userId: userEmail || userId },
     );
 
     const now = new Date().toISOString();
@@ -193,7 +193,7 @@ export const handler = async (event: AppSyncEvent) => {
         ExpressionAttributeValues: {
           ":historical": "HISTORICAL",
         },
-      })
+      }),
     );
 
     // Second: INSERT new version
@@ -201,7 +201,7 @@ export const handler = async (event: AppSyncEvent) => {
       new PutCommand({
         TableName: process.env.PROPERTIES_TABLE!,
         Item: newVersion,
-      })
+      }),
     );
 
     logger.info("Property updated successfully", {
@@ -221,7 +221,7 @@ export const handler = async (event: AppSyncEvent) => {
 // Helper: Validate field-level permissions
 function validateFieldPermissions(
   input: UpdatePropertyInput,
-  isAdmin: boolean
+  isAdmin: boolean,
 ): void {
   // Status changes - Admin only
   if (input.status !== undefined && !isAdmin) {
