@@ -87,8 +87,9 @@ export class ApiStack extends cdk.Stack {
       },
     });
 
-    // ... rest of your resolvers code stays the same ...
     // Create data sources for each table
+
+    
     const investorsDataSource = this.api.addDynamoDbDataSource(
       "InvestorsDataSource",
       props.tables.investors

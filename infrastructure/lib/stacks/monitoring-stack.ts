@@ -174,6 +174,77 @@ export class MonitoringStack extends cdk.Stack {
     );
 
     // ===========================================
+    // 🆕 KYC SPECIFIC ALARMS
+    // ===========================================
+
+    // Create custom metrics for KYC (you'll log these from Lambdas)
+    const kycPendingMetric = new cloudwatch.Metric({
+      namespace: "PREPG3/KYC",
+      metricName: "PendingKYCCount",
+      statistic: "Average",
+      period: cdk.Duration.minutes(15),
+    });
+
+    const kycApprovalRateMetric = new cloudwatch.Metric({
+      namespace: "PREPG3/KYC",
+      metricName: "ApprovalRate",
+      statistic: "Average",
+      period: cdk.Duration.hours(1),
+    });
+
+    const kycProcessingTimeMetric = new cloudwatch.Metric({
+      namespace: "PREPG3/KYC",
+      metricName: "ProcessingTimeMinutes",
+      statistic: "Average",
+      period: cdk.Duration.hours(1),
+    });
+
+    // Alarm: Too many pending KYC reviews
+    const kycBacklogAlarm = new cloudwatch.Alarm(this, "KYCBacklogAlarm", {
+      metric: kycPendingMetric,
+      threshold: 20, // Alert when > 20 pending
+      evaluationPeriods: 2,
+      alarmDescription: "Alert when KYC review queue is too large",
+      alarmName: `PREPG3-${props.environmentName}-KYC-Backlog`,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    kycBacklogAlarm.addAlarmAction(new cloudwatch_actions.SnsAction(alarmTopic));
+
+    // Alarm: Low approval rate (might indicate Onfido issues)
+    const kycLowApprovalAlarm = new cloudwatch.Alarm(this, "KYCLowApprovalAlarm", {
+      metric: kycApprovalRateMetric,
+      threshold: 50, // Alert when < 50% approval
+      comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+      evaluationPeriods: 2,
+      alarmDescription: "Alert when KYC approval rate is too low",
+      alarmName: `PREPG3-${props.environmentName}-KYC-LowApproval`,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    kycLowApprovalAlarm.addAlarmAction(new cloudwatch_actions.SnsAction(alarmTopic));
+
+    // Add KYC metrics to dashboard
+    dashboard.addWidgets(
+      new cloudwatch.GraphWidget({
+        title: "KYC - Pending Reviews",
+        left: [kycPendingMetric],
+        width: 8,
+      }),
+      new cloudwatch.GraphWidget({
+        title: "KYC - Approval Rate",
+        left: [kycApprovalRateMetric],
+        width: 8,
+      }),
+      new cloudwatch.GraphWidget({
+        title: "KYC - Processing Time",
+        left: [kycProcessingTimeMetric],
+        width: 8,
+      })
+    );
+
+
+    // ===========================================
     // LAMBDA METRICS
     // ===========================================
 

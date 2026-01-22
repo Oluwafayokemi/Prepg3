@@ -4,7 +4,12 @@ import { UpdateCommand, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "@shared/db/client";
 import { Logger } from "@shared/utils/logger";
 import { validateRequired } from "@shared/utils/validators";
-import { UnauthorizedError, NotFoundError, ValidationError } from "@shared/utils/errors";
+import {
+  UnauthorizedError,
+  NotFoundError,
+  ValidationError,
+} from "@shared/utils/errors";
+import { MetricsService } from "@shared/utils/metrics";
 import type { AppSyncEvent } from "../../shared/types";
 import {
   CognitoIdentityProviderClient,
@@ -32,7 +37,9 @@ export const handler = async (event: AppSyncEvent) => {
     const isCompliance = groups.includes("Compliance");
 
     if (!isAdmin && !isCompliance) {
-      throw new UnauthorizedError("Only admins or compliance officers can approve KYC");
+      throw new UnauthorizedError(
+        "Only admins or compliance officers can approve KYC"
+      );
     }
 
     const approvedBy = event.identity?.claims?.email || event.identity?.sub;
@@ -52,9 +59,25 @@ export const handler = async (event: AppSyncEvent) => {
 
     const investor = getResult.Item;
 
+    // 📊 LOG METRICS: Approval + Processing Time
+    const verificationMethod =
+      investor.identityVerification?.verificationMethod || "MANUAL";
+
+    await MetricsService.logKYCDecision("APPROVED", verificationMethod);
+
+    // Log processing time
+    if (investor.identityVerification?.submittedAt) {
+      await MetricsService.logKYCProcessingTime(
+        investor.identityVerification.submittedAt,
+        now,
+        verificationMethod
+      );
+    }
     // Validate investor has submitted required documents
     if (!investor.identityVerification) {
-      throw new ValidationError("Investor has not submitted identity documents");
+      throw new ValidationError(
+        "Investor has not submitted identity documents"
+      );
     }
 
     if (!investor.proofOfAddress) {
@@ -76,7 +99,7 @@ export const handler = async (event: AppSyncEvent) => {
       verificationLevel: "FULLY_VERIFIED",
       updatedAt: now,
       updatedBy: approvedBy,
-      changeReason: `KYC approved by ${approverName}. ${notes || ''}`,
+      changeReason: `KYC approved by ${approverName}. ${notes || ""}`,
       changedFields: ["kycStatus", "accountStatus", "verificationLevel"],
       identityVerification: {
         ...investor.identityVerification,
@@ -146,7 +169,6 @@ export const handler = async (event: AppSyncEvent) => {
     await sendWelcomeEmail(investor);
 
     return newVersion;
-
   } catch (error) {
     logger.error("Error approving KYC", error);
     throw error;
@@ -168,7 +190,8 @@ async function sendKYCApprovedNotification(investor: any) {
       id: uuidv4(),
       investorId: investor.id,
       title: "KYC Verification Complete! 🎉",
-      message: "Your identity has been verified. You can now start investing in properties.",
+      message:
+        "Your identity has been verified. You can now start investing in properties.",
       type: "KYC_STATUS_CHANGE",
       isRead: false,
       createdAt: new Date().toISOString(),
@@ -302,7 +325,9 @@ async function sendWelcomeEmail(investor: any) {
                     <ul>
                       <li>Account Status: <strong style="color: green;">Active ✓</strong></li>
                       <li>Verification Level: <strong>Fully Verified</strong></li>
-                      <li>KYC Valid Until: <strong>${new Date(investor.kycExpiryDate).toLocaleDateString()}</strong></li>
+                      <li>KYC Valid Until: <strong>${new Date(
+                        investor.kycExpiryDate
+                      ).toLocaleDateString()}</strong></li>
                     </ul>
                     
                     <p>If you have any questions, our support team is here to help.</p>
@@ -314,7 +339,9 @@ async function sendWelcomeEmail(investor: any) {
                   <div class="footer">
                     <p>PREPG3 Property Investment Platform</p>
                     <p>This email was sent to ${investor.email}</p>
-                    <p><a href="${process.env.APP_URL}/unsubscribe">Unsubscribe</a></p>
+                    <p><a href="${
+                      process.env.APP_URL
+                    }/unsubscribe">Unsubscribe</a></p>
                   </div>
                 </div>
               </body>

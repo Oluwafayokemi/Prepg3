@@ -1,5 +1,3 @@
-// lambda/investors/submit-identity-document/index.ts
-
 import { UpdateCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "@shared/db/client";
 import { Logger } from "@shared/utils/logger";
@@ -9,25 +7,28 @@ import {
   UnauthorizedError,
   NotFoundError,
 } from "@shared/utils/errors";
+import { MetricsService } from "@shared/utils/metrics";
 import type { AppSyncEvent } from "../../shared/types";
+import { kycVerificationService } from "@shared/services/kyc-verification-service";
 
 const logger = new Logger("SubmitIdentityDocument");
 
 interface SubmitIdentityInput {
   investorId: string;
-  documentType: string; // PASSPORT, DRIVING_LICENSE, NATIONAL_ID, RESIDENCE_PERMIT
+  documentType: string;
   documentNumber: string;
   issuingCountry: string;
   issueDate?: string;
   expiryDate: string;
-  documentImages: string[]; // S3 keys
+  documentImages: string[];
 }
 
 interface KYCSubmissionResponse {
   success: boolean;
   message: string;
   kycStatus: string;
-  estimatedReviewTime: string;
+  verificationMethod: string;
+  estimatedReviewTime?: string;
 }
 
 export const handler = async (
@@ -38,7 +39,6 @@ export const handler = async (
   try {
     const input: SubmitIdentityInput = event.arguments.input;
 
-    // Validate required fields
     validateRequired(input.investorId, "investorId");
     validateRequired(input.documentType, "documentType");
     validateRequired(input.documentNumber, "documentNumber");
@@ -50,7 +50,7 @@ export const handler = async (
       throw new ValidationError("At least one document image is required");
     }
 
-    // Validate expiry date is in the future
+    // Validate expiry date
     const expiryDate = new Date(input.expiryDate);
     const today = new Date();
     if (expiryDate <= today) {
@@ -61,7 +61,6 @@ export const handler = async (
 
     // Authorization check
     const userId = event.identity?.sub || event.identity?.username;
-
     if (!userId) {
       throw new UnauthorizedError("Not authenticated");
     }
@@ -78,8 +77,10 @@ export const handler = async (
       throw new NotFoundError("Investor not found");
     }
 
+    const investor = getResult.Item;
+
     // Check authorization
-    const investorUserId = getResult.Item.userId || getResult.Item.id;
+    const investorUserId = investor.userId || investor.id;
     const groups = event.identity?.claims?.["cognito:groups"] || [];
     const isAdmin = groups.includes("Admin");
 
@@ -91,60 +92,125 @@ export const handler = async (
 
     const now = new Date().toISOString();
 
-    // Update investor with identity verification details
-    const result = await docClient.send(
+    // ============================================
+    // USE KYC VERIFICATION SERVICE
+    // ============================================
+
+    const verificationResult = await kycVerificationService.verify({
+      investorId: input.investorId,
+      firstName: investor.firstName,
+      lastName: investor.lastName,
+      email: investor.email,
+      dateOfBirth: investor.dateOfBirth,
+      documents: {
+        identityDocument: {
+          type: input.documentType,
+          images: input.documentImages,
+          documentNumber: input.documentNumber,
+          expiryDate: input.expiryDate,
+        },
+        proofOfAddress: investor.proofOfAddress || {},
+      },
+    });
+
+    await MetricsService.logKYCVerificationMethod(
+      verificationResult.method,
+      verificationResult.status
+    );
+
+    logger.info("Verification result", verificationResult);
+
+    // ============================================
+    // UPDATE INVESTOR RECORD
+    // ============================================
+
+    const updateExpression: string[] = [];
+    const attributeNames: Record<string, string> = {};
+    const attributeValues: Record<string, any> = {};
+
+    // Store document details
+    updateExpression.push("#identityVerification = :identityVerification");
+    attributeNames["#identityVerification"] = "identityVerification";
+    attributeValues[":identityVerification"] = {
+      documentType: input.documentType,
+      documentNumber: input.documentNumber,
+      issuingCountry: input.issuingCountry,
+      issueDate: input.issueDate || null,
+      expiryDate: input.expiryDate,
+      documentImages: input.documentImages,
+      verificationMethod: verificationResult.method,
+      verificationProvider: verificationResult.provider || null,
+      checkId: verificationResult.checkId || null,
+      submittedAt: now,
+    };
+
+    // Update KYC status based on verification result
+    updateExpression.push("#kycStatus = :kycStatus");
+    attributeNames["#kycStatus"] = "kycStatus";
+    attributeValues[":kycStatus"] = verificationResult.status;
+
+    // Update verification level
+    updateExpression.push("#verificationLevel = :verificationLevel");
+    attributeNames["#verificationLevel"] = "verificationLevel";
+    attributeValues[":verificationLevel"] = "ID_SUBMITTED";
+
+    // Update timestamp
+    updateExpression.push("#updatedAt = :updatedAt");
+    attributeNames["#updatedAt"] = "updatedAt";
+    attributeValues[":updatedAt"] = now;
+
+    await docClient.send(
       new UpdateCommand({
         TableName: process.env.INVESTORS_TABLE!,
         Key: { id: input.investorId },
-        UpdateExpression: `
-          SET #identityVerification = :identityVerification,
-              #kycStatus = :kycStatus,
-              #verificationLevel = :verificationLevel,
-              #updatedAt = :updatedAt
-        `,
-        ExpressionAttributeNames: {
-          "#identityVerification": "identityVerification",
-          "#kycStatus": "kycStatus",
-          "#verificationLevel": "verificationLevel",
-          "#updatedAt": "updatedAt",
-        },
-        ExpressionAttributeValues: {
-          ":identityVerification": {
-            documentType: input.documentType,
-            documentNumber: input.documentNumber, // In production, encrypt this
-            issuingCountry: input.issuingCountry,
-            issueDate: input.issueDate || null,
-            expiryDate: input.expiryDate,
-            documentImages: input.documentImages,
-            verificationMethod: "MANUAL_REVIEW", // Will be updated after review
-            verificationProvider: null,
-            verifiedBy: null,
-            verifiedDate: null,
-          },
-          ":kycStatus": "IN_PROGRESS",
-          ":verificationLevel": "ID_VERIFIED",
-          ":updatedAt": now,
-        },
+        UpdateExpression: `SET ${updateExpression.join(", ")}`,
+        ExpressionAttributeNames: attributeNames,
+        ExpressionAttributeValues: attributeValues,
         ReturnValues: "ALL_NEW",
       })
     );
 
     logger.info("Identity document submitted successfully", {
       investorId: input.investorId,
-      documentType: input.documentType,
+      method: verificationResult.method,
+      status: verificationResult.status,
     });
 
-    // TODO: Trigger KYC review workflow
-    // - Send notification to compliance team
-    // - Create audit log entry
-    // - If using third-party service (Onfido, Jumio), initiate verification
+    // ============================================
+    // PREPARE RESPONSE BASED ON METHOD
+    // ============================================
+
+    let message: string;
+    let estimatedReviewTime: string | undefined;
+
+    if (verificationResult.method === "AUTOMATED") {
+      if (verificationResult.status === "APPROVED") {
+        message = "Identity verified successfully! Your account is now active.";
+      } else if (verificationResult.status === "IN_PROGRESS") {
+        message =
+          "Identity verification in progress. You'll receive a notification shortly.";
+        estimatedReviewTime = "1-5 minutes";
+      } else if (verificationResult.reviewRequired) {
+        message =
+          "Your documents require manual review. Our team will review them shortly.";
+        estimatedReviewTime = "1-3 business days";
+      } else {
+        message =
+          "Identity verification failed. Please check the issues and resubmit.";
+      }
+    } else {
+      // Manual
+      message =
+        "Identity document submitted successfully. Our compliance team will review it shortly.";
+      estimatedReviewTime = "1-3 business days";
+    }
 
     return {
       success: true,
-      message:
-        "Identity document submitted successfully. Our compliance team will review it shortly.",
-      kycStatus: "IN_PROGRESS",
-      estimatedReviewTime: "1-3 business days",
+      message,
+      kycStatus: verificationResult.status,
+      verificationMethod: verificationResult.method,
+      estimatedReviewTime,
     };
   } catch (error) {
     logger.error("Error submitting identity document", error);
