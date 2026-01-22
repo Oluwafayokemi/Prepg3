@@ -1,0 +1,423 @@
+
+
+
+
+
+
+
+type AdminDashboard {
+  
+  totalInvestors: Int!
+  totalProperties: Int!
+  totalCapitalRaised: Float!
+  totalPortfolioValue: Float!
+  averageROI: Float!
+  
+  
+  recentInvestments: [Investment!]!
+  recentTransactions: [Transaction!]!
+  
+  
+  propertiesByStatus: [PropertyStatusCount!]!
+  
+  
+  pendingKYCReviews: Int!
+  pendingAMLAlerts: Int!
+  activePEPInvestors: Int!
+  suspendedAccounts: Int!
+  
+  
+  monthlyRevenue: Float!
+  totalFees: Float!
+  outstandingPayments: Float!
+}
+
+type PropertyStatusCount {
+  status: PropertyStatus!
+  count: Int!
+}
+
+type KYCReviewQueue {
+  pending: [Investor!]!
+  inProgress: [Investor!]!
+  requiresMoreInfo: [Investor!]!
+  totalCount: Int!
+}
+
+type ComplianceStats {
+  totalInvestors: Int!
+  verifiedInvestors: Int!
+  pendingKYCCount: Int!
+  rejectedKYCCount: Int!
+  pepCount: Int!
+  highRiskCount: Int!
+  amlAlertsLast30Days: Int!
+  sanctionMatchesLast30Days: Int!
+}
+
+type InvestorStats {
+  total: Int!
+  active: Int!
+  pendingVerification: Int!
+  suspended: Int!
+  closed: Int!
+  newThisMonth: Int!
+  newThisWeek: Int!
+  byTier: [InvestorTierCount!]!
+  byCategory: [InvestorCategoryCount!]!
+}
+
+type InvestorTierCount {
+  tier: AccountTier!
+  count: Int!
+}
+
+type InvestorCategoryCount {
+  category: InvestorCategory!
+  count: Int!
+}
+
+type PropertyStats {
+  total: Int!
+  byStatus: [PropertyStatusCount!]!
+  byType: [PropertyTypeCount!]!
+  totalValue: Float!
+  averageROI: Float!
+}
+
+type PropertyTypeCount {
+  type: PropertyType!
+  count: Int!
+}
+
+type FinancialStats {
+  totalCapitalRaised: Float!
+  totalPortfolioValue: Float!
+  totalFees: Float!
+  monthlyRevenue: Float!
+  revenueThisYear: Float!
+  transactionVolumeLast30Days: Float!
+  averageInvestmentSize: Float!
+}
+
+type AuditLog {
+  id: ID!
+  timestamp: AWSDateTime!
+  userId: ID!
+  userName: String!
+  userRole: String!
+  action: AuditAction!
+  entityType: String!
+  entityId: ID!
+  changes: AWSJSON
+  ipAddress: String
+  userAgent: String
+  status: AuditStatus!
+  details: String
+}
+
+type AuditLogConnection {
+  items: [AuditLog!]!
+  nextToken: String
+  totalCount: Int
+}
+
+
+
+
+
+type AdminActivity {
+  id: ID!
+  adminId: ID!
+  adminName: String!
+  action: AdminActionType!
+  description: String!
+  entityType: String
+  entityId: ID
+  timestamp: AWSDateTime!
+}
+
+type AdminActivityConnection {
+  items: [AdminActivity!]!
+  nextToken: String
+}
+
+
+
+
+
+type SystemHealth {
+  status: SystemStatus!
+  apiResponseTime: Float!
+  databaseResponseTime: Float!
+  lambdaErrors: Int!
+  amlServiceStatus: ServiceStatus!
+  emailServiceStatus: ServiceStatus!
+  s3ServiceStatus: ServiceStatus!
+  lastChecked: AWSDateTime!
+}
+
+
+
+
+
+enum AuditAction {
+  
+  INVESTOR_CREATED
+  INVESTOR_UPDATED
+  INVESTOR_SUSPENDED
+  INVESTOR_REACTIVATED
+  INVESTOR_CLOSED
+  
+  
+  KYC_SUBMITTED
+  KYC_APPROVED
+  KYC_REJECTED
+  KYC_MORE_INFO_REQUESTED
+  
+  
+  AML_CHECK_RUN
+  AML_ALERT_CREATED
+  AML_ALERT_RESOLVED
+  SANCTIONS_CHECK_RUN
+  
+  
+  PASSWORD_RESET
+  EMAIL_CHANGED
+  PHONE_CHANGED
+  
+  
+  INVESTMENT_CREATED
+  TRANSACTION_CREATED
+  WITHDRAWAL_PROCESSED
+  
+  
+  PROPERTY_CREATED
+  PROPERTY_UPDATED
+  PROPERTY_SOLD
+  
+  
+  ADMIN_LOGIN
+  ADMIN_LOGOUT
+  SETTINGS_CHANGED
+  BULK_ACTION_PERFORMED
+  
+  
+  DATA_EXPORT
+  DATA_IMPORT
+  BACKUP_CREATED
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILED
+  PENDING
+  PARTIAL
+}
+
+enum AdminActionType {
+  LOGIN
+  LOGOUT
+  KYC_REVIEW
+  AML_REVIEW
+  INVESTOR_UPDATE
+  PROPERTY_UPDATE
+  TRANSACTION_CREATE
+  NOTIFICATION_SEND
+  REPORT_GENERATE
+  SETTINGS_CHANGE
+  BULK_ACTION
+  DATA_EXPORT
+}
+
+enum SystemStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+}
+
+enum ServiceStatus {
+  OPERATIONAL
+  DEGRADED
+  OUTAGE
+  MAINTENANCE
+}
+
+
+
+
+
+input AuditLogFilterInput {
+  userId: ID
+  action: AuditAction
+  entityType: String
+  entityId: ID
+  startDate: AWSDateTime
+  endDate: AWSDateTime
+  status: AuditStatus
+}
+
+input AdminActivityFilterInput {
+  adminId: ID
+  action: AdminActionType
+  startDate: AWSDateTime
+  endDate: AWSDateTime
+}
+
+
+
+
+
+type Query {
+  
+  getAdminDashboard: AdminDashboard!
+  getInvestorStats: InvestorStats!
+  getPropertyStats: PropertyStats!
+  getFinancialStats: FinancialStats!
+  getComplianceStats: ComplianceStats!
+  
+  
+  getKYCReviewQueue: KYCReviewQueue!
+  
+  
+  listAuditLogs(
+    filter: AuditLogFilterInput
+    limit: Int
+    nextToken: String
+  ): AuditLogConnection!
+  
+  getAuditLog(id: ID!): AuditLog!
+  
+  listAdminActivity(
+    filter: AdminActivityFilterInput
+    limit: Int
+    nextToken: String
+  ): AdminActivityConnection!
+  
+  
+  getSystemHealth: SystemHealth!
+  
+  
+  generateInvestorReport(
+    startDate: AWSDate
+    endDate: AWSDate
+    format: ReportFormat
+  ): String!
+  
+  generateFinancialReport(
+    startDate: AWSDate
+    endDate: AWSDate
+    format: ReportFormat
+  ): String!
+  
+  generateComplianceReport(
+    startDate: AWSDate
+    endDate: AWSDate
+    format: ReportFormat
+  ): String!
+}
+
+enum ReportFormat {
+  PDF
+  CSV
+  EXCEL
+}
+
+
+
+
+
+type Mutation {
+  
+  bulkApproveKYC(investorIds: [ID!]!): BulkOperationResult!
+  bulkRejectKYC(investorIds: [ID!]!, reason: String!): BulkOperationResult!
+  bulkSendNotification(investorIds: [ID!]!, notification: SendNotificationInput!): BulkOperationResult!
+  bulkSuspendAccounts(investorIds: [ID!]!, reason: String!): BulkOperationResult!
+  
+  
+  triggerBackup: Boolean!
+  clearCache: Boolean!
+  syncData: Boolean!
+  
+  
+  logAuditEvent(
+    action: AuditAction!
+    entityType: String!
+    entityId: ID!
+    changes: AWSJSON
+    details: String
+  ): AuditLog!
+}
+
+type BulkOperationResult {
+  totalProcessed: Int!
+  successCount: Int!
+  failureCount: Int!
+  errors: [BulkOperationError!]
+}
+
+type BulkOperationError {
+  investorId: ID!
+  error: String!
+}
+
+
+
+
+
+type Subscription {
+  
+  onAdminNotification: AdminNotification
+    @aws_subscribe(mutations: ["logAuditEvent"])
+  
+  
+  onSystemHealthChanged: SystemHealth
+    @aws_subscribe(mutations: ["triggerBackup", "clearCache"])
+}
+
+type AdminNotification {
+  type: AdminNotificationType!
+  title: String!
+  message: String!
+  severity: NotificationSeverity!
+  timestamp: AWSDateTime!
+  link: String
+}
+
+enum AdminNotificationType {
+  NEW_KYC_SUBMISSION
+  NEW_AML_ALERT
+  SYSTEM_ERROR
+  BACKUP_COMPLETED
+  LARGE_TRANSACTION
+  SUSPICIOUS_ACTIVITY
+  SERVICE_DEGRADED
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

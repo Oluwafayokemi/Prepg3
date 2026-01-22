@@ -6,13 +6,14 @@
 node_modules
 cdk.out
 build/  # ✅ Add this
-
+.next/
 # IDE
 .vscode
 .idea
 *.swp
 *.swo
 *~
+infrastructure/graphql/schema-merged.graphql
 
 # OS
 .DS_Store

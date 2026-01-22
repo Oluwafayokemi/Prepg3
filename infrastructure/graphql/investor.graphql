@@ -1,0 +1,760 @@
+
+scalar AWSDate
+scalar AWSTime
+scalar AWSDateTime
+scalar AWSTimestamp
+scalar AWSEmail
+scalar AWSJSON
+scalar AWSURL
+scalar AWSPhone
+scalar AWSIPAddress
+
+
+
+
+
+type Investor {
+  id: ID!
+
+  
+  email: String!
+  firstName: String!
+  lastName: String!
+  middleName: String
+  title: String
+  dateOfBirth: AWSDate
+  nationalInsuranceNumber: String
+
+  
+  phone: String
+  mobilePhone: String
+  workPhone: String
+  preferredContactMethod: ContactMethod
+
+  
+  address: Address
+  mailingAddress: Address
+  previousAddresses: [Address!]
+
+  
+  employmentStatus: EmploymentStatus
+  occupation: String
+  employer: String
+  annualIncome: IncomeRange
+  sourceOfFunds: SourceOfFunds
+  sourceOfWealth: String
+
+  
+  bankAccounts: [BankAccount!]
+  primaryBankAccountId: ID
+
+  
+  investorType: InvestorType!
+  investorCategory: InvestorCategory
+  riskTolerance: RiskTolerance
+  investmentObjectives: [String!]
+  investmentExperience: InvestmentExperience
+  totalInvested: Float!
+  portfolioValue: Float!
+  totalROI: Float!
+
+  
+  nextOfKin: NextOfKin
+  emergencyContact: EmergencyContact
+
+  
+  taxResidency: String
+  taxIdentificationNumber: String
+  isFATCAReportable: Boolean
+
+  
+  identityVerification: IdentityVerification
+  proofOfAddress: ProofOfAddress
+  kycStatus: KYCStatus!
+  kycVerifiedDate: AWSDateTime
+  kycExpiryDate: AWSDateTime
+  kycRejectionReason: String
+  
+  
+  amlCheckStatus: AMLStatus!
+  amlCheckDate: AWSDateTime
+  amlRiskLevel: RiskLevel
+
+  
+  isPEP: Boolean
+  pepDetails: String
+  pepPosition: String
+  pepCountry: String
+  sanctionsCheckStatus: SanctionsStatus
+  sanctionsCheckDate: AWSDateTime
+
+  
+  marketingConsent: Boolean!
+  dataProcessingConsent: Boolean!
+  termsAcceptedDate: AWSDateTime
+  privacyPolicyAcceptedDate: AWSDateTime
+  communicationPreferences: CommunicationPreferences
+
+  
+  accountStatus: AccountStatus!
+  accountTier: AccountTier
+  verificationLevel: VerificationLevel!
+  emailVerified: Boolean!
+  phoneVerified: Boolean
+  emailVerificationToken: String
+
+  
+  investments: [Investment!]
+  transactions: [Transaction!]
+  documents: [Document!]
+  notifications: [Notification!]
+  amlAlerts: [AMLAlert!]
+
+  
+  referralSource: String
+  referredBy: ID
+  notes: String
+  lastReviewDate: AWSDateTime
+  nextReviewDate: AWSDateTime
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  lastLoginAt: AWSDateTime
+  
+  
+  version: Int
+  isCurrent: String
+  updatedBy: String
+  changedFields: [String!]
+  changeReason: String
+  previousVersion: Int
+}
+
+
+
+
+
+type Address {
+  addressLine1: String!
+  addressLine2: String
+  city: String!
+  county: String
+  postcode: String!
+  country: String!
+  residencySince: AWSDate
+  isCurrentAddress: Boolean!
+}
+
+type BankAccount {
+  id: ID!
+  accountName: String!
+  bankName: String!
+  accountNumber: String!
+  sortCode: String!
+  iban: String
+  swiftCode: String
+  isPrimary: Boolean!
+  isVerified: Boolean!
+  verifiedDate: AWSDateTime
+  verificationMethod: String
+  currency: String!
+  accountType: BankAccountType!
+  createdAt: AWSDateTime!
+}
+
+type NextOfKin {
+  firstName: String!
+  lastName: String!
+  relationship: String!
+  phone: String!
+  email: String
+  address: Address
+  dateOfBirth: AWSDate
+}
+
+type EmergencyContact {
+  firstName: String!
+  lastName: String!
+  relationship: String!
+  phone: String!
+  alternativePhone: String
+  email: String
+}
+
+type IdentityVerification {
+  documentType: IDDocumentType!
+  documentNumber: String!
+  issuingCountry: String!
+  issueDate: AWSDate
+  expiryDate: AWSDate
+  documentImages: [String!]
+  verificationMethod: VerificationMethod
+  verificationProvider: String
+  verifiedBy: String
+  verifiedDate: AWSDateTime
+}
+
+type ProofOfAddress {
+  documentType: AddressDocumentType!
+  documentDate: AWSDate!
+  documentImages: [String!]
+  verifiedDate: AWSDateTime
+  verifiedBy: String
+}
+
+type CommunicationPreferences {
+  receiveEmail: Boolean!
+  receiveSMS: Boolean!
+  receivePhone: Boolean!
+  receivePost: Boolean!
+  emailFrequency: EmailFrequency!
+  preferredLanguage: String!
+}
+
+
+
+
+
+type AMLAlert {
+  id: ID!
+  investorId: ID!
+  investor: Investor!
+  alertType: AMLAlertType!
+  severity: AlertSeverity!
+  title: String!
+  description: String!
+  matchDetails: AWSJSON
+  status: AlertStatus!
+  riskScore: Float
+  
+  
+  actionTaken: String
+  actionDate: AWSDateTime
+  
+  
+  reviewedBy: String
+  reviewedAt: AWSDateTime
+  reviewNotes: String
+  
+  
+  resolution: AlertResolution
+  resolutionNotes: String
+  
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+
+
+
+
+type RegistrationResponse {
+  investor: Investor!
+  message: String!
+  nextSteps: [String!]!
+}
+
+type EmailVerificationResponse {
+  success: Boolean!
+  message: String!
+  investor: Investor
+}
+
+type KYCSubmissionResponse {
+  success: Boolean!
+  message: String!
+  kycStatus: KYCStatus!
+  estimatedReviewTime: String
+}
+
+type AMLCheckResponse {
+  success: Boolean!
+  status: AMLStatus!
+  riskLevel: RiskLevel!
+  matchesFound: Int!
+  details: String
+  requiresReview: Boolean!
+}
+
+
+
+
+
+type InvestorDashboard {
+  totalInvested: Float!
+  portfolioValue: Float!
+  totalROI: Float!
+  activeInvestments: Int!
+  recentTransactions: [Transaction!]!
+  unreadNotifications: Int!
+  properties: [DashboardProperty!]!
+  kycStatus: KYCStatus!
+  verificationLevel: VerificationLevel!
+  accountStatus: AccountStatus!
+}
+
+type KYCReviewQueue {
+  pending: [Investor!]!
+  inProgress: [Investor!]!
+  requiresMoreInfo: [Investor!]!
+  totalCount: Int!
+}
+
+
+
+
+
+type InvestorVersion {
+  id: ID!
+  version: Int!
+  isCurrent: Boolean!
+  
+  
+  email: String!
+  firstName: String!
+  lastName: String!
+  phone: String
+  kycStatus: KYCStatus!
+  accountStatus: AccountStatus!
+  totalInvested: Float!
+  
+  
+  updatedAt: AWSDateTime!
+  updatedBy: String!
+  changeReason: String
+  changedFields: [String!]
+  previousVersion: Int
+}
+
+type ChangeDetail {
+  field: String!
+  oldValue: String
+  newValue: String
+}
+
+type VersionTimeline {
+  version: Int!
+  timestamp: AWSDateTime!
+  user: String!
+  reason: String
+  isCurrent: Boolean!
+  changes: [ChangeDetail!]!
+  fullData: AWSJSON
+}
+
+type InvestorVersionHistory {
+  investorId: ID!
+  currentVersion: Int!
+  totalVersions: Int!
+  timeline: [VersionTimeline!]!
+}
+
+
+
+
+
+type InvestorConnection {
+  items: [Investor!]!
+  nextToken: String
+  total: Int
+}
+
+type AMLAlertConnection {
+  items: [AMLAlert!]!
+  nextToken: String
+  totalCount: Int
+  criticalCount: Int
+  highCount: Int
+}
+
+
+
+
+
+enum ContactMethod {
+  EMAIL
+  PHONE
+  SMS
+  POST
+  WHATSAPP
+}
+
+enum EmploymentStatus {
+  EMPLOYED_FULL_TIME
+  EMPLOYED_PART_TIME
+  SELF_EMPLOYED
+  UNEMPLOYED
+  RETIRED
+  STUDENT
+  OTHER
+}
+
+enum SourceOfFunds {
+  SALARY
+  BUSINESS_INCOME
+  SAVINGS
+  INHERITANCE
+  INVESTMENT_RETURNS
+  GIFT
+  PROPERTY_SALE
+  PENSION
+  OTHER
+}
+
+enum InvestorType {
+  INDIVIDUAL
+  JOINT
+  COMPANY
+  TRUST
+  PENSION_FUND
+  CHARITY
+  OTHER
+}
+
+enum InvestorCategory {
+  RETAIL
+  PROFESSIONAL
+  ELIGIBLE_COUNTERPARTY
+  HIGH_NET_WORTH
+  SOPHISTICATED
+}
+
+enum RiskTolerance {
+  VERY_LOW
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum InvestmentExperience {
+  NONE
+  LIMITED
+  MODERATE
+  EXTENSIVE
+  PROFESSIONAL
+}
+
+enum IncomeRange {
+  UNDER_20K
+  RANGE_20K_40K
+  RANGE_40K_60K
+  RANGE_60K_100K
+  RANGE_100K_150K
+  OVER_150K
+  PREFER_NOT_SAY
+}
+
+enum BankAccountType {
+  CURRENT
+  SAVINGS
+  BUSINESS
+  JOINT
+}
+
+enum KYCStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  EXPIRED
+  REQUIRES_UPDATE
+  MORE_INFO_REQUIRED
+}
+
+enum AMLStatus {
+  PENDING
+  PASSED
+  FAILED
+  REVIEW_REQUIRED
+}
+
+enum SanctionsStatus {
+  NOT_CHECKED
+  CLEAR
+  POTENTIAL_MATCH
+  CONFIRMED_MATCH
+}
+
+enum AccountStatus {
+  ACTIVE
+  PENDING_VERIFICATION
+  SUSPENDED
+  CLOSED
+  DORMANT
+}
+
+enum AccountTier {
+  BASIC
+  PREMIUM
+  VIP
+  INSTITUTIONAL
+}
+
+enum VerificationLevel {
+  UNVERIFIED
+  EMAIL_VERIFIED
+  PHONE_VERIFIED
+  ID_VERIFIED
+  FULLY_VERIFIED
+}
+
+enum IDDocumentType {
+  PASSPORT
+  DRIVING_LICENSE
+  NATIONAL_ID
+  RESIDENCE_PERMIT
+}
+
+enum AddressDocumentType {
+  UTILITY_BILL
+  BANK_STATEMENT
+  COUNCIL_TAX_BILL
+  MORTGAGE_STATEMENT
+  TENANCY_AGREEMENT
+  GOVERNMENT_LETTER
+}
+
+enum VerificationMethod {
+  MANUAL_REVIEW
+  AUTOMATED_CHECK
+  VIDEO_VERIFICATION
+  THIRD_PARTY_SERVICE
+}
+
+enum EmailFrequency {
+  REAL_TIME
+  DAILY_DIGEST
+  WEEKLY_DIGEST
+  MONTHLY_SUMMARY
+  IMPORTANT_ONLY
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AMLAlertType {
+  NEW_SANCTION
+  ADVERSE_MEDIA
+  PEP_STATUS_CHANGE
+  HIGH_RISK_TRANSACTION
+  NAME_MATCH_UPDATE
+  COUNTRY_RISK_CHANGE
+  SANCTIONS_LIST_UPDATE
+}
+
+enum AlertSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum AlertStatus {
+  NEW
+  REVIEWING
+  RESOLVED
+  FALSE_POSITIVE
+  ESCALATED
+}
+
+enum AlertResolution {
+  FALSE_POSITIVE
+  ACCOUNT_SUSPENDED
+  ACCOUNT_CLOSED
+  ENHANCED_MONITORING
+  NO_ACTION_REQUIRED
+  REFERRED_TO_AUTHORITIES
+}
+
+
+
+
+
+input RegisterInvestorInput {
+  email: String!
+  password: String!
+  firstName: String!
+  lastName: String!
+  phone: String!
+  dateOfBirth: AWSDate!
+  address: AddressInput!
+  investorType: InvestorType!
+  marketingConsent: Boolean!
+  termsAccepted: Boolean!
+}
+
+input CompleteProfileInput {
+  investorId: ID!
+  middleName: String
+  title: String
+  mobilePhone: String
+  mailingAddress: AddressInput
+  employmentStatus: EmploymentStatus
+  occupation: String
+  employer: String
+  annualIncome: IncomeRange
+  preferredContactMethod: ContactMethod
+}
+
+input UpdateInvestorInput {
+  id: ID!
+  
+  
+  firstName: String
+  lastName: String
+  middleName: String
+  title: String
+  dateOfBirth: AWSDate
+  
+  
+  email: String
+  phone: String
+  mobilePhone: String
+  workPhone: String
+  preferredContactMethod: ContactMethod
+  
+  
+  address: AddressInput
+  mailingAddress: AddressInput
+  
+  
+  employmentStatus: EmploymentStatus
+  occupation: String
+  employer: String
+  annualIncome: IncomeRange
+  sourceOfFunds: SourceOfFunds
+  sourceOfWealth: String
+  
+  
+  investorType: InvestorType
+  investorCategory: InvestorCategory
+  riskTolerance: RiskTolerance
+  investmentObjectives: [String!]
+  investmentExperience: InvestmentExperience
+  
+  
+  taxResidency: String
+  isFATCAReportable: Boolean
+  
+  
+  kycStatus: KYCStatus
+  amlCheckStatus: AMLStatus
+  sanctionsCheckStatus: SanctionsStatus
+  
+  
+  isPEP: Boolean
+  pepDetails: String
+  pepPosition: String
+  pepCountry: String
+  
+  
+  accountStatus: AccountStatus
+  accountTier: AccountTier
+  
+  
+  communicationPreferences: CommunicationPreferencesInput
+  marketingConsent: Boolean
+  
+  
+  notes: String
+  
+  
+  changeReason: String
+}
+
+input SubmitIdentityInput {
+  investorId: ID!
+  documentType: IDDocumentType!
+  documentNumber: String!
+  issuingCountry: String!
+  issueDate: AWSDate
+  expiryDate: AWSDate!
+  documentImages: [String!]!
+}
+
+input SubmitProofOfAddressInput {
+  investorId: ID!
+  documentType: AddressDocumentType!
+  documentDate: AWSDate!
+  documentImages: [String!]!
+}
+
+input SubmitSourceOfFundsInput {
+  investorId: ID!
+  sourceOfFunds: SourceOfFunds!
+  sourceOfWealth: String!
+  annualIncome: IncomeRange!
+  supportingDocuments: [String!]
+}
+
+input SubmitPEPDeclarationInput {
+  investorId: ID!
+  isPEP: Boolean!
+  pepDetails: String
+  pepPosition: String
+  pepCountry: String
+}
+
+input AddBankAccountInput {
+  investorId: ID!
+  accountName: String!
+  bankName: String!
+  accountNumber: String!
+  sortCode: String!
+  iban: String
+  swiftCode: String
+  isPrimary: Boolean!
+  currency: String!
+  accountType: BankAccountType!
+}
+
+input AddressInput {
+  addressLine1: String!
+  addressLine2: String
+  city: String!
+  county: String
+  postcode: String!
+  country: String!
+  residencySince: AWSDate
+  isCurrentAddress: Boolean!
+}
+
+input NextOfKinInput {
+  firstName: String!
+  lastName: String!
+  relationship: String!
+  phone: String!
+  email: String
+  address: AddressInput
+  dateOfBirth: AWSDate
+}
+
+input EmergencyContactInput {
+  firstName: String!
+  lastName: String!
+  relationship: String!
+  phone: String!
+  alternativePhone: String
+  email: String
+}
+
+input CommunicationPreferencesInput {
+  receiveEmail: Boolean
+  receiveSMS: Boolean
+  receivePhone: Boolean
+  receivePost: Boolean
+  emailFrequency: EmailFrequency
+  preferredLanguage: String
+}
+
+input ReviewAMLAlertInput {
+  alertId: ID!
+  status: AlertStatus!
+  resolution: AlertResolution
+  actionTaken: String
+  reviewNotes: String
+}

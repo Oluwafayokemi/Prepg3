@@ -1,0 +1,1309 @@
+# AWS AppSync Scalar Types
+scalar AWSDate
+scalar AWSTime
+scalar AWSDateTime
+scalar AWSTimestamp
+scalar AWSEmail
+scalar AWSJSON
+scalar AWSURL
+scalar AWSPhone
+scalar AWSIPAddress
+
+type Query {
+getInvestor(id: ID!): Investor
+getInvestorByEmail(email: String!): Investor
+listInvestors(limit: Int, nextToken: String): InvestorConnection!
+getMyKYCStatus: KYCStatus!
+getKYCReviewQueue: KYCReviewQueue!
+listPendingKYC(limit: Int, nextToken: String): InvestorConnection!
+listInvestorsRequiringAMLReview(limit: Int, nextToken: String): InvestorConnection!
+listPEPInvestors(limit: Int, nextToken: String): InvestorConnection!
+getAMLAlert(id: ID!): AMLAlert
+listAMLAlerts(
+    status: AlertStatus
+    severity: AlertSeverity
+    limit: Int
+    nextToken: String
+  ): AMLAlertConnection!
+listAMLAlertsByInvestor(
+    investorId: ID!
+    limit: Int
+    nextToken: String
+  ): AMLAlertConnection!
+getInvestorDashboard(investorId: ID!): InvestorDashboard!
+getProperty(id: ID!): Property
+listProperties(limit: Int, nextToken: String): [Property!]!
+listPropertiesByStatus(
+    status: PropertyStatus!
+    limit: Int
+    nextToken: String
+  ): [Property!]!
+getInvestment(id: ID!): Investment
+listInvestmentsByInvestor(
+    investorId: ID!
+    limit: Int
+    nextToken: String
+  ): InvestmentConnection!
+listInvestmentsByProperty(
+    propertyId: ID!
+    limit: Int
+    nextToken: String
+  ): InvestmentConnection!
+getTransaction(id: ID!): Transaction
+listTransactionsByInvestor(
+    investorId: ID!
+    limit: Int
+    nextToken: String
+  ): TransactionConnection!
+getDocument(id: ID!): Document
+listDocumentsByInvestor(
+    investorId: ID!
+    limit: Int
+    nextToken: String
+  ): DocumentConnection!
+listDocumentsByProperty(
+    propertyId: ID!
+    limit: Int
+    nextToken: String
+  ): DocumentConnection!
+generateDocumentUrl(id: ID!): String!
+listNotificationsByInvestor(
+    investorId: ID!
+    limit: Int
+    nextToken: String
+  ): NotificationConnection!
+listDevelopmentsByProperty(
+    propertyId: ID!
+    limit: Int
+    nextToken: String
+  ): DevelopmentConnection!
+getAdminDashboard: AdminDashboard!
+getInvestorStats: InvestorStats!
+getPropertyStats: PropertyStats!
+getFinancialStats: FinancialStats!
+getComplianceStats: ComplianceStats!
+listAuditLogs(
+    filter: AuditLogFilterInput
+    limit: Int
+    nextToken: String
+  ): AuditLogConnection!
+getAuditLog(id: ID!): AuditLog!
+listAdminActivity(
+    filter: AdminActivityFilterInput
+    limit: Int
+    nextToken: String
+  ): AdminActivityConnection!
+getSystemHealth: SystemHealth!
+generateInvestorReport(
+    startDate: AWSDate
+    endDate: AWSDate
+    format: ReportFormat
+  ): String!
+generateFinancialReport(
+    startDate: AWSDate
+    endDate: AWSDate
+    format: ReportFormat
+  ): String!
+generateComplianceReport(
+    startDate: AWSDate
+    endDate: AWSDate
+    format: ReportFormat
+  ): String!
+}
+
+type Mutation {
+registerInvestor(input: RegisterInvestorInput!): RegistrationResponse!
+verifyEmail(token: String!): EmailVerificationResponse!
+resendVerificationEmail(email: String!): Boolean!
+completeProfile(input: CompleteProfileInput!): Investor!
+updateInvestor(input: UpdateInvestorInput!): Investor!
+submitIdentityDocument(input: SubmitIdentityInput!): KYCSubmissionResponse!
+submitProofOfAddress(input: SubmitProofOfAddressInput!): KYCSubmissionResponse!
+submitSourceOfFunds(input: SubmitSourceOfFundsInput!): KYCSubmissionResponse!
+submitPEPDeclaration(input: SubmitPEPDeclarationInput!): Investor!
+addNextOfKin(investorId: ID!, input: NextOfKinInput!): Investor!
+addEmergencyContact(investorId: ID!, input: EmergencyContactInput!): Investor!
+addBankAccount(input: AddBankAccountInput!): BankAccount!
+updateBankAccount(id: ID!, input: AddBankAccountInput!): BankAccount!
+deleteBankAccount(id: ID!): Boolean!
+setPrimaryBankAccount(investorId: ID!, bankAccountId: ID!): Investor!
+approveKYC(investorId: ID!, notes: String): Investor!
+rejectKYC(investorId: ID!, reason: String!): Investor!
+requestMoreInfo(investorId: ID!, message: String!): Investor!
+runAMLCheck(investorId: ID!): AMLCheckResponse!
+runSanctionsCheck(investorId: ID!): Investor!
+runDailyAMLMonitoring: Int!
+updateAMLStatus(investorId: ID!, status: AMLStatus!, notes: String): Investor!
+updateSanctionsStatus(investorId: ID!, status: SanctionsStatus!, notes: String): Investor!
+reviewAMLAlert(input: ReviewAMLAlertInput!): AMLAlert!
+resolveAMLAlert(alertId: ID!, resolution: AlertResolution!, notes: String!): AMLAlert!
+suspendAccount(investorId: ID!, reason: String!): Investor!
+reactivateAccount(investorId: ID!): Investor!
+closeAccount(investorId: ID!, reason: String!): Investor!
+createProperty(input: CreatePropertyInput!): Property!
+updateProperty(input: UpdatePropertyInput!): Property!
+createInvestment(input: CreateInvestmentInput!): Investment!
+createTransaction(input: CreateTransactionInput!): Transaction!
+uploadDocument(input: UploadDocumentInput!): Document!
+createDevelopment(input: CreateDevelopmentInput!): Development!
+sendNotification(input: SendNotificationInput!): Notification!
+markNotificationRead(id: ID!): Notification!
+bulkApproveKYC(investorIds: [ID!]!): BulkOperationResult!
+bulkRejectKYC(investorIds: [ID!]!, reason: String!): BulkOperationResult!
+bulkSendNotification(investorIds: [ID!]!, notification: SendNotificationInput!): BulkOperationResult!
+bulkSuspendAccounts(investorIds: [ID!]!, reason: String!): BulkOperationResult!
+triggerBackup: Boolean!
+clearCache: Boolean!
+syncData: Boolean!
+logAuditEvent(
+    action: AuditAction!
+    entityType: String!
+    entityId: ID!
+    changes: AWSJSON
+    details: String
+  ): AuditLog!
+}
+
+type Subscription {
+onMyKYCStatusChanged(investorId: ID!): Investor
+onAMLAlertCreated: AMLAlert
+onKYCReviewAdded: Investor
+onInvestorStatusChanged(investorId: ID!): Investor
+onMyInvestmentCreated(investorId: ID!): Investment
+onMyNotificationCreated(investorId: ID!): Notification
+onDevelopmentCreated(propertyId: ID!): Development
+onAdminNotification: AdminNotification
+onSystemHealthChanged: SystemHealth
+}
+
+type Investor {
+  id: ID!
+
+  
+  email: String!
+  firstName: String!
+  lastName: String!
+  middleName: String
+  title: String
+  dateOfBirth: AWSDate
+  nationalInsuranceNumber: String
+
+  
+  phone: String
+  mobilePhone: String
+  workPhone: String
+  preferredContactMethod: ContactMethod
+
+  
+  address: Address
+  mailingAddress: Address
+  previousAddresses: [Address!]
+
+  
+  employmentStatus: EmploymentStatus
+  occupation: String
+  employer: String
+  annualIncome: IncomeRange
+  sourceOfFunds: SourceOfFunds
+  sourceOfWealth: String
+
+  
+  bankAccounts: [BankAccount!]
+  primaryBankAccountId: ID
+
+  
+  investorType: InvestorType!
+  investorCategory: InvestorCategory
+  riskTolerance: RiskTolerance
+  investmentObjectives: [String!]
+  investmentExperience: InvestmentExperience
+  totalInvested: Float!
+  portfolioValue: Float!
+  totalROI: Float!
+
+  
+  nextOfKin: NextOfKin
+  emergencyContact: EmergencyContact
+
+  
+  taxResidency: String
+  taxIdentificationNumber: String
+  isFATCAReportable: Boolean
+
+  
+  identityVerification: IdentityVerification
+  proofOfAddress: ProofOfAddress
+  kycStatus: KYCStatus!
+  kycVerifiedDate: AWSDateTime
+  kycExpiryDate: AWSDateTime
+  kycRejectionReason: String
+  
+  
+  amlCheckStatus: AMLStatus!
+  amlCheckDate: AWSDateTime
+  amlRiskLevel: RiskLevel
+
+  
+  isPEP: Boolean
+  pepDetails: String
+  pepPosition: String
+  pepCountry: String
+  sanctionsCheckStatus: SanctionsStatus
+  sanctionsCheckDate: AWSDateTime
+
+  
+  marketingConsent: Boolean!
+  dataProcessingConsent: Boolean!
+  termsAcceptedDate: AWSDateTime
+  privacyPolicyAcceptedDate: AWSDateTime
+  communicationPreferences: CommunicationPreferences
+
+  
+  accountStatus: AccountStatus!
+  accountTier: AccountTier
+  verificationLevel: VerificationLevel!
+  emailVerified: Boolean!
+  phoneVerified: Boolean
+  emailVerificationToken: String
+
+  
+  investments: [Investment!]
+  transactions: [Transaction!]
+  documents: [Document!]
+  notifications: [Notification!]
+  amlAlerts: [AMLAlert!]
+
+  
+  referralSource: String
+  referredBy: ID
+  notes: String
+  lastReviewDate: AWSDateTime
+  nextReviewDate: AWSDateTime
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  lastLoginAt: AWSDateTime
+}
+
+type Address {
+  addressLine1: String!
+  addressLine2: String
+  city: String!
+  county: String
+  postcode: String!
+  country: String!
+  residencySince: AWSDate
+  isCurrentAddress: Boolean!
+}
+
+type BankAccount {
+  id: ID!
+  accountName: String!
+  bankName: String!
+  accountNumber: String!
+  sortCode: String!
+  iban: String
+  swiftCode: String
+  isPrimary: Boolean!
+  isVerified: Boolean!
+  verifiedDate: AWSDateTime
+  verificationMethod: String
+  currency: String!
+  accountType: BankAccountType!
+  createdAt: AWSDateTime!
+}
+
+type NextOfKin {
+  firstName: String!
+  lastName: String!
+  relationship: String!
+  phone: String!
+  email: String
+  address: Address
+  dateOfBirth: AWSDate
+}
+
+type EmergencyContact {
+  firstName: String!
+  lastName: String!
+  relationship: String!
+  phone: String!
+  alternativePhone: String
+  email: String
+}
+
+type IdentityVerification {
+  documentType: IDDocumentType!
+  documentNumber: String!
+  issuingCountry: String!
+  issueDate: AWSDate
+  expiryDate: AWSDate
+  documentImages: [String!]
+  verificationMethod: VerificationMethod
+  verificationProvider: String
+  verifiedBy: String
+  verifiedDate: AWSDateTime
+}
+
+type ProofOfAddress {
+  documentType: AddressDocumentType!
+  documentDate: AWSDate!
+  documentImages: [String!]
+  verifiedDate: AWSDateTime
+  verifiedBy: String
+}
+
+type CommunicationPreferences {
+  receiveEmail: Boolean!
+  receiveSMS: Boolean!
+  receivePhone: Boolean!
+  receivePost: Boolean!
+  emailFrequency: EmailFrequency!
+  preferredLanguage: String!
+}
+
+type AMLAlert {
+  id: ID!
+  investorId: ID!
+  investor: Investor!
+  alertType: AMLAlertType!
+  severity: AlertSeverity!
+  title: String!
+  description: String!
+  matchDetails: AWSJSON
+  status: AlertStatus!
+  riskScore: Float
+  
+  
+  actionTaken: String
+  actionDate: AWSDateTime
+  
+  
+  reviewedBy: String
+  reviewedAt: AWSDateTime
+  reviewNotes: String
+  
+  
+  resolution: AlertResolution
+  resolutionNotes: String
+  
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type RegistrationResponse {
+  investor: Investor!
+  message: String!
+  nextSteps: [String!]!
+}
+
+type EmailVerificationResponse {
+  success: Boolean!
+  message: String!
+  investor: Investor
+}
+
+type KYCSubmissionResponse {
+  success: Boolean!
+  message: String!
+  kycStatus: KYCStatus!
+  estimatedReviewTime: String
+}
+
+type AMLCheckResponse {
+  success: Boolean!
+  status: AMLStatus!
+  riskLevel: RiskLevel!
+  matchesFound: Int!
+  details: String
+  requiresReview: Boolean!
+}
+
+type InvestorDashboard {
+  totalInvested: Float!
+  portfolioValue: Float!
+  totalROI: Float!
+  activeInvestments: Int!
+  recentTransactions: [Transaction!]!
+  unreadNotifications: Int!
+  properties: [DashboardProperty!]!
+  kycStatus: KYCStatus!
+  verificationLevel: VerificationLevel!
+  accountStatus: AccountStatus!
+}
+
+type InvestorConnection {
+  items: [Investor!]!
+  nextToken: String
+  total: Int
+}
+
+type AMLAlertConnection {
+  items: [AMLAlert!]!
+  nextToken: String
+  totalCount: Int
+  criticalCount: Int
+  highCount: Int
+}
+
+enum ContactMethod {
+  EMAIL
+  PHONE
+  SMS
+  POST
+  WHATSAPP
+}
+
+enum EmploymentStatus {
+  EMPLOYED_FULL_TIME
+  EMPLOYED_PART_TIME
+  SELF_EMPLOYED
+  UNEMPLOYED
+  RETIRED
+  STUDENT
+  OTHER
+}
+
+enum SourceOfFunds {
+  SALARY
+  BUSINESS_INCOME
+  SAVINGS
+  INHERITANCE
+  INVESTMENT_RETURNS
+  GIFT
+  PROPERTY_SALE
+  PENSION
+  OTHER
+}
+
+enum InvestorType {
+  INDIVIDUAL
+  JOINT
+  COMPANY
+  TRUST
+  PENSION_FUND
+  CHARITY
+  OTHER
+}
+
+enum InvestorCategory {
+  RETAIL
+  PROFESSIONAL
+  ELIGIBLE_COUNTERPARTY
+  HIGH_NET_WORTH
+  SOPHISTICATED
+}
+
+enum RiskTolerance {
+  VERY_LOW
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum InvestmentExperience {
+  NONE
+  LIMITED
+  MODERATE
+  EXTENSIVE
+  PROFESSIONAL
+}
+
+enum IncomeRange {
+  UNDER_20K
+  RANGE_20K_40K
+  RANGE_40K_60K
+  RANGE_60K_100K
+  RANGE_100K_150K
+  OVER_150K
+  PREFER_NOT_SAY
+}
+
+enum BankAccountType {
+  CURRENT
+  SAVINGS
+  BUSINESS
+  JOINT
+}
+
+enum KYCStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  EXPIRED
+  REQUIRES_UPDATE
+  MORE_INFO_REQUIRED
+}
+
+enum AMLStatus {
+  PENDING
+  PASSED
+  FAILED
+  REVIEW_REQUIRED
+}
+
+enum SanctionsStatus {
+  NOT_CHECKED
+  CLEAR
+  POTENTIAL_MATCH
+  CONFIRMED_MATCH
+}
+
+enum AccountStatus {
+  ACTIVE
+  PENDING_VERIFICATION
+  SUSPENDED
+  CLOSED
+  DORMANT
+}
+
+enum AccountTier {
+  BASIC
+  PREMIUM
+  VIP
+  INSTITUTIONAL
+}
+
+enum VerificationLevel {
+  UNVERIFIED
+  EMAIL_VERIFIED
+  PHONE_VERIFIED
+  ID_VERIFIED
+  FULLY_VERIFIED
+}
+
+enum IDDocumentType {
+  PASSPORT
+  DRIVING_LICENSE
+  NATIONAL_ID
+  RESIDENCE_PERMIT
+}
+
+enum AddressDocumentType {
+  UTILITY_BILL
+  BANK_STATEMENT
+  COUNCIL_TAX_BILL
+  MORTGAGE_STATEMENT
+  TENANCY_AGREEMENT
+  GOVERNMENT_LETTER
+}
+
+enum VerificationMethod {
+  MANUAL_REVIEW
+  AUTOMATED_CHECK
+  VIDEO_VERIFICATION
+  THIRD_PARTY_SERVICE
+}
+
+enum EmailFrequency {
+  REAL_TIME
+  DAILY_DIGEST
+  WEEKLY_DIGEST
+  MONTHLY_SUMMARY
+  IMPORTANT_ONLY
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AMLAlertType {
+  NEW_SANCTION
+  ADVERSE_MEDIA
+  PEP_STATUS_CHANGE
+  HIGH_RISK_TRANSACTION
+  NAME_MATCH_UPDATE
+  COUNTRY_RISK_CHANGE
+  SANCTIONS_LIST_UPDATE
+}
+
+enum AlertSeverity {
+  CRITICAL  
+  HIGH      
+  MEDIUM    
+  LOW       
+}
+
+enum AlertStatus {
+  NEW
+  REVIEWING
+  RESOLVED
+  FALSE_POSITIVE
+  ESCALATED
+}
+
+enum AlertResolution {
+  FALSE_POSITIVE
+  ACCOUNT_SUSPENDED
+  ACCOUNT_CLOSED
+  ENHANCED_MONITORING
+  NO_ACTION_REQUIRED
+  REFERRED_TO_AUTHORITIES
+}
+
+input RegisterInvestorInput {
+  email: String!
+  password: String!
+  firstName: String!
+  lastName: String!
+  phone: String!
+  dateOfBirth: AWSDate!
+  address: AddressInput!
+  investorType: InvestorType!
+  marketingConsent: Boolean!
+  termsAccepted: Boolean!
+}
+
+input CompleteProfileInput {
+  investorId: ID!
+  middleName: String
+  title: String
+  mobilePhone: String
+  mailingAddress: AddressInput
+  employmentStatus: EmploymentStatus
+  occupation: String
+  employer: String
+  annualIncome: IncomeRange
+  preferredContactMethod: ContactMethod
+}
+
+input UpdateInvestorInput {
+  id: ID!
+  firstName: String
+  lastName: String
+  middleName: String
+  phone: String
+  mobilePhone: String
+  email: String
+  address: AddressInput
+  employmentStatus: EmploymentStatus
+  occupation: String
+  employer: String
+  notes: String
+}
+
+input SubmitIdentityInput {
+  investorId: ID!
+  documentType: IDDocumentType!
+  documentNumber: String!
+  issuingCountry: String!
+  issueDate: AWSDate
+  expiryDate: AWSDate!
+  documentImages: [String!]!
+}
+
+input SubmitProofOfAddressInput {
+  investorId: ID!
+  documentType: AddressDocumentType!
+  documentDate: AWSDate!
+  documentImages: [String!]!
+}
+
+input SubmitSourceOfFundsInput {
+  investorId: ID!
+  sourceOfFunds: SourceOfFunds!
+  sourceOfWealth: String!
+  annualIncome: IncomeRange!
+  supportingDocuments: [String!]
+}
+
+input SubmitPEPDeclarationInput {
+  investorId: ID!
+  isPEP: Boolean!
+  pepDetails: String
+  pepPosition: String
+  pepCountry: String
+}
+
+input AddBankAccountInput {
+  investorId: ID!
+  accountName: String!
+  bankName: String!
+  accountNumber: String!
+  sortCode: String!
+  iban: String
+  swiftCode: String
+  isPrimary: Boolean!
+  currency: String!
+  accountType: BankAccountType!
+}
+
+input AddressInput {
+  addressLine1: String!
+  addressLine2: String
+  city: String!
+  county: String
+  postcode: String!
+  country: String!
+  residencySince: AWSDate
+  isCurrentAddress: Boolean!
+}
+
+input NextOfKinInput {
+  firstName: String!
+  lastName: String!
+  relationship: String!
+  phone: String!
+  email: String
+  address: AddressInput
+  dateOfBirth: AWSDate
+}
+
+input EmergencyContactInput {
+  firstName: String!
+  lastName: String!
+  relationship: String!
+  phone: String!
+  alternativePhone: String
+  email: String
+}
+
+input CommunicationPreferencesInput {
+  receiveEmail: Boolean
+  receiveSMS: Boolean
+  receivePhone: Boolean
+  receivePost: Boolean
+  emailFrequency: EmailFrequency
+  preferredLanguage: String
+}
+
+input ReviewAMLAlertInput {
+  alertId: ID!
+  status: AlertStatus!
+  resolution: AlertResolution
+  actionTaken: String
+  reviewNotes: String
+}
+
+type Property {
+  id: ID!
+  address: String!
+  postcode: String!
+  city: String
+  propertyType: PropertyType!
+  purchasePrice: Float!
+  currentValuation: Float!
+  status: PropertyStatus!
+  images: [String!]
+  acquisitionDate: AWSDate!
+  totalInvested: Float
+  investments: [Investment!]
+  developments: [Development!]
+  documents: [Document!]
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type DashboardProperty {
+  id: ID!
+  address: String!
+  postcode: String!
+  city: String
+  propertyType: PropertyType!
+  currentValuation: Float!
+  status: PropertyStatus!
+  equityPercentage: Float!
+  investmentValue: Float!
+  investmentAmount: Float!
+}
+
+type Investment {
+  id: ID!
+  investorId: ID!
+  investor: Investor
+  propertyId: ID!
+  property: Property
+  investmentAmount: Float!
+  equityPercentage: Float!
+  investmentDate: AWSDate!
+  currentValue: Float!
+  roi: Float!
+  status: InvestmentStatus!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Transaction {
+  id: ID!
+  investorId: ID!
+  investor: Investor
+  propertyId: ID
+  property: Property
+  type: TransactionType!
+  amount: Float!
+  description: String!
+  date: AWSDate!
+  reference: String
+  createdAt: AWSDateTime!
+}
+
+type Document {
+  id: ID!
+  investorId: ID
+  investor: Investor
+  propertyId: ID
+  property: Property
+  title: String!
+  description: String
+  fileKey: String!
+  fileType: String!
+  fileSize: Int!
+  uploadDate: AWSDateTime!
+  category: DocumentCategory!
+  url: String
+}
+
+type Development {
+  id: ID!
+  propertyId: ID!
+  property: Property
+  title: String!
+  description: String!
+  status: String!
+  updateDate: AWSDateTime!
+  images: [String!]
+  createdAt: AWSDateTime!
+}
+
+type Notification {
+  id: ID!
+  investorId: ID!
+  investor: Investor
+  title: String!
+  message: String!
+  type: NotificationType!
+  isRead: Boolean!
+  createdAt: AWSDateTime!
+  link: String
+}
+
+type InvestmentConnection {
+  items: [Investment!]!
+  nextToken: String
+}
+
+type TransactionConnection {
+  items: [Transaction!]!
+  nextToken: String
+}
+
+type DocumentConnection {
+  items: [Document!]!
+  nextToken: String
+}
+
+type NotificationConnection {
+  items: [Notification!]!
+  nextToken: String
+}
+
+type DevelopmentConnection {
+  items: [Development!]!
+  nextToken: String
+}
+
+enum PropertyType {
+  RESIDENTIAL
+  COMMERCIAL
+  MIXED_USE
+  LAND
+}
+
+enum PropertyStatus {
+  ACQUISITION
+  DEVELOPMENT
+  COMPLETED
+  SOLD
+}
+
+enum InvestmentStatus {
+  ACTIVE
+  COMPLETED
+  PENDING
+}
+
+enum TransactionType {
+  INVESTMENT
+  DIVIDEND
+  PROFIT_SHARE
+  WITHDRAWAL
+  FEE
+}
+
+enum DocumentCategory {
+  CONTRACT
+  REPORT
+  CERTIFICATE
+  INVOICE
+  VALUATION
+  KYC_DOCUMENT
+  IDENTITY_DOCUMENT
+  ADDRESS_PROOF
+  SOURCE_OF_FUNDS
+  OTHER
+}
+
+enum NotificationType {
+  INVESTMENT_UPDATE
+  DOCUMENT_UPLOADED
+  PAYMENT_RECEIVED
+  PROPERTY_UPDATE
+  KYC_STATUS_CHANGE
+  AML_ALERT
+  SYSTEM
+}
+
+input CreatePropertyInput {
+  address: String!
+  postcode: String!
+  city: String
+  propertyType: PropertyType!
+  purchasePrice: Float!
+  currentValuation: Float!
+  status: PropertyStatus!
+  images: [String!]
+  acquisitionDate: AWSDate!
+}
+
+input UpdatePropertyInput {
+  id: ID!
+  currentValuation: Float
+  status: PropertyStatus
+  images: [String!]
+}
+
+input CreateInvestmentInput {
+  investorId: ID!
+  propertyId: ID!
+  investmentAmount: Float!
+  equityPercentage: Float!
+}
+
+input CreateTransactionInput {
+  investorId: ID!
+  propertyId: ID
+  type: TransactionType!
+  amount: Float!
+  description: String!
+  date: AWSDate
+  reference: String
+}
+
+input UploadDocumentInput {
+  investorId: ID
+  propertyId: ID
+  title: String!
+  description: String
+  fileKey: String!
+  fileType: String!
+  fileSize: Int!
+  category: DocumentCategory!
+}
+
+input CreateDevelopmentInput {
+  propertyId: ID!
+  title: String!
+  description: String!
+  status: String!
+  images: [String!]
+}
+
+input SendNotificationInput {
+  investorId: ID
+  investorIds: [ID!]
+  title: String!
+  message: String!
+  type: NotificationType!
+  link: String
+}
+
+type AdminDashboard {
+  
+  totalInvestors: Int!
+  totalProperties: Int!
+  totalCapitalRaised: Float!
+  totalPortfolioValue: Float!
+  averageROI: Float!
+  
+  
+  recentInvestments: [Investment!]!
+  recentTransactions: [Transaction!]!
+  
+  
+  propertiesByStatus: [PropertyStatusCount!]!
+  
+  
+  pendingKYCReviews: Int!
+  pendingAMLAlerts: Int!
+  activePEPInvestors: Int!
+  suspendedAccounts: Int!
+  
+  
+  monthlyRevenue: Float!
+  totalFees: Float!
+  outstandingPayments: Float!
+}
+
+type PropertyStatusCount {
+  status: PropertyStatus!
+  count: Int!
+}
+
+type KYCReviewQueue {
+  pending: [Investor!]!
+  inProgress: [Investor!]!
+  requiresMoreInfo: [Investor!]!
+  totalCount: Int!
+}
+
+type ComplianceStats {
+  totalInvestors: Int!
+  verifiedInvestors: Int!
+  pendingKYCCount: Int!
+  rejectedKYCCount: Int!
+  pepCount: Int!
+  highRiskCount: Int!
+  amlAlertsLast30Days: Int!
+  sanctionMatchesLast30Days: Int!
+}
+
+type InvestorStats {
+  total: Int!
+  active: Int!
+  pendingVerification: Int!
+  suspended: Int!
+  closed: Int!
+  newThisMonth: Int!
+  newThisWeek: Int!
+  byTier: [InvestorTierCount!]!
+  byCategory: [InvestorCategoryCount!]!
+}
+
+type InvestorTierCount {
+  tier: AccountTier!
+  count: Int!
+}
+
+type InvestorCategoryCount {
+  category: InvestorCategory!
+  count: Int!
+}
+
+type PropertyStats {
+  total: Int!
+  byStatus: [PropertyStatusCount!]!
+  byType: [PropertyTypeCount!]!
+  totalValue: Float!
+  averageROI: Float!
+}
+
+type PropertyTypeCount {
+  type: PropertyType!
+  count: Int!
+}
+
+type FinancialStats {
+  totalCapitalRaised: Float!
+  totalPortfolioValue: Float!
+  totalFees: Float!
+  monthlyRevenue: Float!
+  revenueThisYear: Float!
+  transactionVolumeLast30Days: Float!
+  averageInvestmentSize: Float!
+}
+
+type AuditLog {
+  id: ID!
+  timestamp: AWSDateTime!
+  userId: ID!
+  userName: String!
+  userRole: String!
+  action: AuditAction!
+  entityType: String!
+  entityId: ID!
+  changes: AWSJSON
+  ipAddress: String
+  userAgent: String
+  status: AuditStatus!
+  details: String
+}
+
+type AuditLogConnection {
+  items: [AuditLog!]!
+  nextToken: String
+  totalCount: Int
+}
+
+type AdminActivity {
+  id: ID!
+  adminId: ID!
+  adminName: String!
+  action: AdminActionType!
+  description: String!
+  entityType: String
+  entityId: ID
+  timestamp: AWSDateTime!
+}
+
+type AdminActivityConnection {
+  items: [AdminActivity!]!
+  nextToken: String
+}
+
+type SystemHealth {
+  status: SystemStatus!
+  apiResponseTime: Float!
+  databaseResponseTime: Float!
+  lambdaErrors: Int!
+  amlServiceStatus: ServiceStatus!
+  emailServiceStatus: ServiceStatus!
+  s3ServiceStatus: ServiceStatus!
+  lastChecked: AWSDateTime!
+}
+
+enum AuditAction {
+  
+  INVESTOR_CREATED
+  INVESTOR_UPDATED
+  INVESTOR_SUSPENDED
+  INVESTOR_REACTIVATED
+  INVESTOR_CLOSED
+  
+  
+  KYC_SUBMITTED
+  KYC_APPROVED
+  KYC_REJECTED
+  KYC_MORE_INFO_REQUESTED
+  
+  
+  AML_CHECK_RUN
+  AML_ALERT_CREATED
+  AML_ALERT_RESOLVED
+  SANCTIONS_CHECK_RUN
+  
+  
+  PASSWORD_RESET
+  EMAIL_CHANGED
+  PHONE_CHANGED
+  
+  
+  INVESTMENT_CREATED
+  TRANSACTION_CREATED
+  WITHDRAWAL_PROCESSED
+  
+  
+  PROPERTY_CREATED
+  PROPERTY_UPDATED
+  PROPERTY_SOLD
+  
+  
+  ADMIN_LOGIN
+  ADMIN_LOGOUT
+  SETTINGS_CHANGED
+  BULK_ACTION_PERFORMED
+  
+  
+  DATA_EXPORT
+  DATA_IMPORT
+  BACKUP_CREATED
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILED
+  PENDING
+  PARTIAL
+}
+
+enum AdminActionType {
+  LOGIN
+  LOGOUT
+  KYC_REVIEW
+  AML_REVIEW
+  INVESTOR_UPDATE
+  PROPERTY_UPDATE
+  TRANSACTION_CREATE
+  NOTIFICATION_SEND
+  REPORT_GENERATE
+  SETTINGS_CHANGE
+  BULK_ACTION
+  DATA_EXPORT
+}
+
+enum SystemStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+}
+
+enum ServiceStatus {
+  OPERATIONAL
+  DEGRADED
+  OUTAGE
+  MAINTENANCE
+}
+
+input AuditLogFilterInput {
+  userId: ID
+  action: AuditAction
+  entityType: String
+  entityId: ID
+  startDate: AWSDateTime
+  endDate: AWSDateTime
+  status: AuditStatus
+}
+
+input AdminActivityFilterInput {
+  adminId: ID
+  action: AdminActionType
+  startDate: AWSDateTime
+  endDate: AWSDateTime
+}
+
+enum ReportFormat {
+  PDF
+  CSV
+  EXCEL
+}
+
+type BulkOperationResult {
+  totalProcessed: Int!
+  successCount: Int!
+  failureCount: Int!
+  errors: [BulkOperationError!]
+}
+
+type BulkOperationError {
+  investorId: ID!
+  error: String!
+}
+
+type AdminNotification {
+  type: AdminNotificationType!
+  title: String!
+  message: String!
+  severity: NotificationSeverity!
+  timestamp: AWSDateTime!
+  link: String
+}
+
+enum AdminNotificationType {
+  NEW_KYC_SUBMISSION
+  NEW_AML_ALERT
+  SYSTEM_ERROR
+  BACKUP_COMPLETED
+  LARGE_TRANSACTION
+  SUSPICIOUS_ACTIVITY
+  SERVICE_DEGRADED
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}

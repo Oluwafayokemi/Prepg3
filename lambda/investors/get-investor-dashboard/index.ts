@@ -9,21 +9,36 @@ import type { AppSyncEvent } from "../../shared/types";
 
 const logger = new Logger("GetInvestorDashboard");
 
+interface InvestorDashboard {
+  totalInvested: number;
+  portfolioValue: number;
+  totalROI: number;
+  activeInvestments: number;
+  recentTransactions: any[];
+  unreadNotifications: number;
+  properties: any[];
+  kycStatus: string;
+  verificationLevel: string;
+  accountStatus: string;
+}
+
 // ✅ Helper to format date as YYYY-MM-DD (AWSDate)
 const formatAWSDate = (dateString: string): string => {
   try {
-    if (!dateString) return new Date().toISOString().split('T')[0];
+    if (!dateString) return new Date().toISOString().split("T")[0];
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
-      return new Date().toISOString().split('T')[0];
+      return new Date().toISOString().split("T")[0];
     }
-    return date.toISOString().split('T')[0]; // Returns "2024-12-31"
+    return date.toISOString().split("T")[0]; // Returns "2024-12-31"
   } catch (error) {
-    return new Date().toISOString().split('T')[0];
+    return new Date().toISOString().split("T")[0];
   }
 };
 
-export const handler = async (event: AppSyncEvent) => {
+export const handler = async (
+  event: AppSyncEvent
+): Promise<InvestorDashboard> => {
   logger.info("Getting investor dashboard", { event });
 
   try {
@@ -53,7 +68,7 @@ export const handler = async (event: AppSyncEvent) => {
     const investorResult = await docClient.send(
       new GetCommand({
         TableName: process.env.INVESTORS_TABLE!,
-        Key: { id: investorId },
+        Key: { id: investorId, isCurrent: "CURRENT" },
       })
     );
 
@@ -100,9 +115,9 @@ export const handler = async (event: AppSyncEvent) => {
       id: txn.id,
       investorId: txn.investorId,
       propertyId: txn.propertyId || null,
-      type: txn.type || 'INVESTMENT',
+      type: txn.type || "INVESTMENT",
       amount: txn.amount || 0,
-      description: txn.description || '',
+      description: txn.description || "",
       date: formatAWSDate(txn.date), // ✅ Format as "2024-12-31"
       reference: txn.reference || null,
       createdAt: new Date(txn.createdAt || Date.now()).toISOString(), // ✅ AWSDateTime
@@ -145,37 +160,44 @@ export const handler = async (event: AppSyncEvent) => {
         );
 
         // ✅ Map property status to enum values
-        let status = property.status?.toUpperCase() || 'COMPLETED';
+        let status = property.status?.toUpperCase() || "COMPLETED";
         // Ensure status matches schema enum: ACQUISITION, DEVELOPMENT, COMPLETED, SOLD
-        const validStatuses = ['ACQUISITION', 'DEVELOPMENT', 'COMPLETED', 'SOLD'];
+        const validStatuses = [
+          "ACQUISITION",
+          "DEVELOPMENT",
+          "COMPLETED",
+          "SOLD",
+        ];
         if (!validStatuses.includes(status)) {
           // Map common variations
-          if (status === 'ACTIVE') status = 'COMPLETED';
-          else status = 'COMPLETED'; // Default
+          if (status === "ACTIVE") status = "COMPLETED";
+          else status = "COMPLETED"; // Default
         }
 
         // ✅ Map property type to enum values
-        let propertyType = property.propertyType?.toUpperCase() || 'RESIDENTIAL';
+        let propertyType =
+          property.propertyType?.toUpperCase() || "RESIDENTIAL";
         // Ensure type matches schema enum: RESIDENTIAL, COMMERCIAL, MIXED_USE, LAND
-        const validTypes = ['RESIDENTIAL', 'COMMERCIAL', 'MIXED_USE', 'LAND'];
+        const validTypes = ["RESIDENTIAL", "COMMERCIAL", "MIXED_USE", "LAND"];
         if (!validTypes.includes(propertyType)) {
           // Map common variations
-          if (propertyType === 'APARTMENT') propertyType = 'RESIDENTIAL';
-          else if (propertyType === 'HOUSE') propertyType = 'RESIDENTIAL';
-          else propertyType = 'RESIDENTIAL'; // Default
+          if (propertyType === "APARTMENT") propertyType = "RESIDENTIAL";
+          else if (propertyType === "HOUSE") propertyType = "RESIDENTIAL";
+          else propertyType = "RESIDENTIAL"; // Default
         }
 
         properties.push({
           id: property.id,
-          address: property.address || '',
-          postcode: property.postcode || '',
+          address: property.address || "",
+          postcode: property.postcode || "",
           propertyType: propertyType,
           currentValuation: property.currentValuation || 0,
           status: status,
           equityPercentage: investment?.equityPercentage || 0,
           investmentValue:
             investment?.currentValue ||
-            (property.currentValuation * (investment?.equityPercentage || 0)) / 100,
+            (property.currentValuation * (investment?.equityPercentage || 0)) /
+              100,
           investmentAmount: investment?.investmentAmount || 0,
         });
       }
@@ -190,6 +212,9 @@ export const handler = async (event: AppSyncEvent) => {
       unreadNotifications: unreadNotifications,
       recentTransactions: recentTransactions,
       properties: properties,
+      kycStatus: investor.kycStatus,
+      verificationLevel: investor.verificationLevel,
+      accountStatus: investor.accountStatus,
     };
 
     logger.info("Dashboard retrieved successfully", {

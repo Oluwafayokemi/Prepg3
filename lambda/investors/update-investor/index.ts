@@ -1,9 +1,8 @@
-// lambda/investors/update-investor/index.ts
-
-import { UpdateCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "@shared/db/client";
 import { Logger } from "@shared/utils/logger";
-import { validateRequired } from "@shared/utils/validators";
+import { validateRequired, validateEmail } from "@shared/utils/validators";
+import { ChangeReasonHandler } from "@shared/utils/change-reason-handler";
 import {
   NotFoundError,
   UnauthorizedError,
@@ -15,10 +14,86 @@ const logger = new Logger("UpdateInvestor");
 
 interface UpdateInvestorInput {
   id: string;
+  
+  // Basic Information
   firstName?: string;
   lastName?: string;
-  phone?: string;
+  middleName?: string;
+  title?: string;
+  dateOfBirth?: string;
+  
+  // Contact Information
   email?: string;
+  phone?: string;
+  mobilePhone?: string;
+  workPhone?: string;
+  preferredContactMethod?: string;
+  
+  // Address Information
+  address?: {
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    county?: string;
+    postcode: string;
+    country: string;
+    residencySince?: string;
+    isCurrentAddress: boolean;
+  };
+  mailingAddress?: any;
+  
+  // Employment Information
+  employmentStatus?: string;
+  occupation?: string;
+  employer?: string;
+  annualIncome?: string;
+  sourceOfFunds?: string;
+  sourceOfWealth?: string;
+  
+  // Investment Profile
+  investorType?: string;
+  investorCategory?: string;
+  riskTolerance?: string;
+  investmentObjectives?: string[];
+  investmentExperience?: string;
+  
+  // Tax Information
+  taxResidency?: string;
+  isFATCAReportable?: boolean;
+  
+  // KYC/Compliance (Admin/Compliance only)
+  kycStatus?: string;
+  amlCheckStatus?: string;
+  sanctionsCheckStatus?: string;
+  
+  // PEP Information
+  isPEP?: boolean;
+  pepDetails?: string;
+  pepPosition?: string;
+  pepCountry?: string;
+  
+  // Account Status (Admin only)
+  accountStatus?: string;
+  accountTier?: string;
+  
+  // Communication Preferences
+  communicationPreferences?: {
+    receiveEmail: boolean;
+    receiveSMS: boolean;
+    receivePhone: boolean;
+    receivePost: boolean;
+    emailFrequency: string;
+    preferredLanguage: string;
+  };
+  
+  // Consents
+  marketingConsent?: boolean;
+  
+  // Admin notes (Admin only)
+  notes?: string;
+  
+  // Change tracking
+  changeReason?: string;
 }
 
 export const handler = async (event: AppSyncEvent) => {
@@ -28,137 +103,229 @@ export const handler = async (event: AppSyncEvent) => {
     const input: UpdateInvestorInput = event.arguments.input;
     validateRequired(input.id, "id");
 
-    // Authorization check
+    // Get user context
+    const userId = event.identity?.sub || event.identity?.username;
+    const userEmail = event.identity?.claims?.email;
     const groups = event.identity?.claims?.["cognito:groups"] || [];
     const isAdmin = groups.includes("Admin");
-    const userSub = event.identity?.sub || event.identity?.username;
+    const isCompliance = groups.includes("Compliance");
 
-    logger.info("Authorization check", {
-      userSub,
-      investorId: input.id,
-      isAdmin,
-      groups,
-    });
+    if (!userId) {
+      throw new UnauthorizedError("Not authenticated");
+    }
 
-    // Only allow users to update their own profile, or admins to update anyone
-    if (!isAdmin && userSub !== input.id) {
-      logger.error("Authorization failed", { userSub, investorId: input.id });
+    // STEP 1: Get current version
+    const currentResult = await docClient.send(
+      new QueryCommand({
+        TableName: process.env.INVESTORS_TABLE!,
+        IndexName: "currentVersions",
+        KeyConditionExpression: "id = :id AND isCurrent = :current",
+        ExpressionAttributeValues: {
+          ":id": input.id,
+          ":current": "CURRENT",
+        },
+        Limit: 1,
+      })
+    );
+
+    if (!currentResult.Items || currentResult.Items.length === 0) {
+      throw new NotFoundError("Investor not found");
+    }
+
+    const currentVersion = currentResult.Items[0];
+
+    // STEP 2: Authorization checks
+    const investorUserId = currentVersion.userId || currentVersion.id;
+
+    // Users can only update their own profile
+    if (!isAdmin && !isCompliance && investorUserId !== userId) {
       throw new UnauthorizedError("You can only update your own profile");
     }
 
-    logger.info("Authorization passed");
+    // Check field-level permissions
+    validateFieldPermissions(input, isAdmin, isCompliance);
 
-    // Check if investor exists
-    const getResult = await docClient.send(
-      new GetCommand({
-        TableName: process.env.INVESTORS_TABLE!,
-        Key: { id: input.id },
-      })
+    // STEP 3: Validate inputs
+    validateInputs(input);
+
+    // STEP 4: Calculate what changed
+    const changedFields: string[] = [];
+    const newData: any = { ...currentVersion };
+
+    // Compare each field
+    Object.keys(input).forEach((key) => {
+      if (key === 'id' || key === 'changeReason') return;
+      
+      const newValue = input[key as keyof UpdateInvestorInput];
+      const currentValue = currentVersion[key];
+      
+      if (newValue !== undefined && JSON.stringify(newValue) !== JSON.stringify(currentValue)) {
+        newData[key] = newValue;
+        changedFields.push(key);
+      }
+    });
+
+    if (changedFields.length === 0) {
+      logger.info("No changes detected");
+      return currentVersion;
+    }
+
+    logger.info("Fields changed", { changedFields });
+
+    // STEP 5: Get/validate change reason
+    const changeReason = ChangeReasonHandler.getChangeReason(
+      changedFields,
+      input.changeReason,
+      { userId: userEmail || userId }
     );
 
-    if (!getResult.Item) {
-      throw new NotFoundError("Investor");
-    }
+    const now = new Date().toISOString();
+    const newVersionNumber = (currentVersion.version || 0) + 1;
 
-    // Build update expression dynamically
-    const updateExpressions: string[] = [];
-    const expressionAttributeNames: Record<string, string> = {};
-    const expressionAttributeValues: Record<string, any> = {};
+    // STEP 6: Create new version record
+    const newVersion = {
+      ...newData,
+      id: input.id,
+      version: newVersionNumber,
+      isCurrent: "CURRENT",
+      updatedAt: now,
+      updatedBy: userEmail || userId,
+      changedFields,
+      changeReason,
+      previousVersion: currentVersion.version,
+      entityType: "INVESTOR",
+    };
 
-    // Add updatedAt timestamp
-    updateExpressions.push("#updatedAt = :updatedAt");
-    expressionAttributeNames["#updatedAt"] = "updatedAt";
-    expressionAttributeValues[":updatedAt"] = new Date().toISOString();
-
-    // Update firstName
-    if (input.firstName !== undefined) {
-      if (!input.firstName.trim()) {
-        throw new ValidationError("First name cannot be empty");
-      }
-      updateExpressions.push("#firstName = :firstName");
-      expressionAttributeNames["#firstName"] = "firstName";
-      expressionAttributeValues[":firstName"] = input.firstName.trim();
-    }
-
-    // Update lastName
-    if (input.lastName !== undefined) {
-      if (!input.lastName.trim()) {
-        throw new ValidationError("Last name cannot be empty");
-      }
-      updateExpressions.push("#lastName = :lastName");
-      expressionAttributeNames["#lastName"] = "lastName";
-      expressionAttributeValues[":lastName"] = input.lastName.trim();
-    }
-
-    // Update phone
-    if (input.phone !== undefined) {
-      // Phone can be null/empty to remove it
-      if (input.phone && input.phone.trim()) {
-        // Basic phone validation (can be enhanced)
-        const phoneRegex = /^[\d\s\-\+\(\)]+$/;
-        if (!phoneRegex.test(input.phone)) {
-          throw new ValidationError("Invalid phone number format");
-        }
-        updateExpressions.push("#phone = :phone");
-        expressionAttributeNames["#phone"] = "phone";
-        expressionAttributeValues[":phone"] = input.phone.trim();
-      } else {
-        // Remove phone if empty string provided
-        updateExpressions.push("REMOVE #phone");
-        expressionAttributeNames["#phone"] = "phone";
-      }
-    }
-
-    // Update email (only admins can change email)
-    if (input.email !== undefined) {
-      if (!isAdmin) {
-        throw new UnauthorizedError("Only admins can change email addresses");
-      }
-
-      // Email validation
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(input.email)) {
-        throw new ValidationError("Invalid email format");
-      }
-
-      updateExpressions.push("#email = :email");
-      expressionAttributeNames["#email"] = "email";
-      expressionAttributeValues[":email"] = input.email.toLowerCase().trim();
-    }
-
-    // Perform update
-    const updateResult = await docClient.send(
+    // STEP 7: Atomic operations
+    // First: Mark old version as HISTORICAL
+    await docClient.send(
       new UpdateCommand({
         TableName: process.env.INVESTORS_TABLE!,
-        Key: { id: input.id },
-        UpdateExpression: `SET ${updateExpressions.join(", ")}`,
-        ExpressionAttributeNames: expressionAttributeNames,
-        ExpressionAttributeValues: expressionAttributeValues,
-        ReturnValues: "ALL_NEW",
+        Key: {
+          id: input.id,
+          version: currentVersion.version,
+        },
+        UpdateExpression: "SET isCurrent = :historical",
+        ExpressionAttributeValues: {
+          ":historical": "HISTORICAL",
+        },
       })
     );
 
-    const updatedInvestor = updateResult.Attributes;
+    // Second: INSERT new version
+    await docClient.send(
+      new PutCommand({
+        TableName: process.env.INVESTORS_TABLE!,
+        Item: newVersion,
+      })
+    );
 
     logger.info("Investor updated successfully", {
       investorId: input.id,
-      updatedFields: Object.keys(input).filter((k) => k !== "id"),
+      version: newVersionNumber,
+      changedFields,
+      reason: changeReason,
     });
 
-    return {
-      id: updatedInvestor!.id,
-      email: updatedInvestor!.email,
-      firstName: updatedInvestor!.firstName,
-      lastName: updatedInvestor!.lastName,
-      phone: updatedInvestor!.phone || null,
-      totalInvested: updatedInvestor!.totalInvested || 0,
-      portfolioValue: updatedInvestor!.portfolioValue || 0,
-      totalROI: updatedInvestor!.totalROI || 0,
-      createdAt: updatedInvestor!.createdAt,
-      updatedAt: updatedInvestor!.updatedAt,
-    };
+    return newVersion;
+
   } catch (error) {
     logger.error("Error updating investor", error);
     throw error;
   }
 };
+
+// Helper: Validate field-level permissions
+function validateFieldPermissions(
+  input: UpdateInvestorInput,
+  isAdmin: boolean,
+  isCompliance: boolean
+): void {
+  // Email changes - Admin only
+  if (input.email !== undefined && !isAdmin) {
+    throw new UnauthorizedError("Only admins can change email addresses");
+  }
+
+  // KYC status - Admin or Compliance only
+  if (input.kycStatus !== undefined && !isAdmin && !isCompliance) {
+    throw new UnauthorizedError("Only admins or compliance officers can update KYC status");
+  }
+
+  // AML status - Admin or Compliance only
+  if (input.amlCheckStatus !== undefined && !isAdmin && !isCompliance) {
+    throw new UnauthorizedError("Only admins or compliance officers can update AML status");
+  }
+
+  // Sanctions status - Admin or Compliance only
+  if (input.sanctionsCheckStatus !== undefined && !isAdmin && !isCompliance) {
+    throw new UnauthorizedError("Only admins or compliance officers can update sanctions status");
+  }
+
+  // Account status - Admin only
+  if (input.accountStatus !== undefined && !isAdmin) {
+    throw new UnauthorizedError("Only admins can change account status");
+  }
+
+  // Account tier - Admin only
+  if (input.accountTier !== undefined && !isAdmin) {
+    throw new UnauthorizedError("Only admins can change account tier");
+  }
+
+  // Investor category - Admin only
+  if (input.investorCategory !== undefined && !isAdmin) {
+    throw new UnauthorizedError("Only admins can change investor category");
+  }
+
+  // Admin notes - Admin only
+  if (input.notes !== undefined && !isAdmin) {
+    throw new UnauthorizedError("Only admins can add notes");
+  }
+}
+
+// Helper: Validate inputs
+function validateInputs(input: UpdateInvestorInput): void {
+  // Email validation
+  if (input.email !== undefined) {
+    validateEmail(input.email);
+  }
+
+  // Name validation
+  if (input.firstName !== undefined && !input.firstName.trim()) {
+    throw new ValidationError("First name cannot be empty");
+  }
+  if (input.lastName !== undefined && !input.lastName.trim()) {
+    throw new ValidationError("Last name cannot be empty");
+  }
+
+  // Phone validation
+  if (input.phone !== undefined && input.phone) {
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    if (!phoneRegex.test(input.phone)) {
+      throw new ValidationError("Invalid phone number format");
+    }
+  }
+
+  // Address validation
+  if (input.address !== undefined) {
+    validateRequired(input.address.addressLine1, "address.addressLine1");
+    validateRequired(input.address.city, "address.city");
+    validateRequired(input.address.postcode, "address.postcode");
+    validateRequired(input.address.country, "address.country");
+
+    // UK postcode validation
+    const postcodeRegex = /^[A-Z]{1,2}[0-9]{1,2}[A-Z]?\s?[0-9][A-Z]{2}$/i;
+    if (!postcodeRegex.test(input.address.postcode)) {
+      throw new ValidationError("Invalid UK postcode format");
+    }
+  }
+
+  // Date of birth validation (must be 18+)
+  if (input.dateOfBirth !== undefined) {
+    const birthDate = new Date(input.dateOfBirth);
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    if (age < 18) {
+      throw new ValidationError("Investor must be at least 18 years old");
+    }
+  }
+}

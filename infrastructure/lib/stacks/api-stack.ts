@@ -5,8 +5,8 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
 import * as path from "path";
-import * as lambda from "aws-cdk-lib/aws-lambda";
-import * as nodejs from "aws-cdk-lib/aws-lambda-nodejs";
+import * as fs from "fs";
+import { SchemaMerger } from "../utils/schema-merger";
 
 interface ApiStackProps extends cdk.StackProps {
   userPool: cognito.UserPool;
@@ -28,11 +28,39 @@ export class ApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
-    // GraphQL API
+    console.log('🚀 Creating AppSync API with merged schema...');
+
+    // Merge GraphQL schemas at build time - use absolute path
+    const schemaDir = path.resolve(__dirname, "../../graphql");
+    console.log(`📂 Schema directory: ${schemaDir}`);
+    
+    const mergedSchema = SchemaMerger.mergeSchemas(schemaDir, [
+      'investor.graphql',
+      'property.graphql',
+      'admin.graphql'
+    ]);
+
+    // IMPORTANT: Save to a location that CDK can bundle
+    // Use cdk.out directory or a temp location
+    const assetDir = path.join(__dirname, "../../assets");
+    if (!fs.existsSync(assetDir)) {
+      fs.mkdirSync(assetDir, { recursive: true });
+    }
+    
+    const schemaAssetPath = path.join(assetDir, 'schema.graphql');
+    fs.writeFileSync(schemaAssetPath, mergedSchema);
+    console.log(`💾 Saved schema asset: ${schemaAssetPath}`);
+    
+    // Also save to graphql directory for reference
+    const mergedSchemaPath = path.join(schemaDir, 'schema-merged.graphql');
+    fs.writeFileSync(mergedSchemaPath, mergedSchema);
+    console.log(`💾 Saved merged schema: ${mergedSchemaPath}`);
+
+    // GraphQL API with schema from asset
     this.api = new appsync.GraphqlApi(this, "API", {
       name: `prepg3-api-${props.environmentName}`,
-      schema: appsync.SchemaFile.fromAsset(
-        path.join(__dirname, "../../graphql/schema.graphql")
+      definition: appsync.Definition.fromSchema(
+        appsync.SchemaFile.fromAsset(schemaAssetPath)
       ),
       authorizationConfig: {
         defaultAuthorization: {
@@ -59,6 +87,7 @@ export class ApiStack extends cdk.Stack {
       },
     });
 
+    // ... rest of your resolvers code stays the same ...
     // Create data sources for each table
     const investorsDataSource = this.api.addDynamoDbDataSource(
       "InvestorsDataSource",
@@ -131,7 +160,7 @@ export class ApiStack extends cdk.Stack {
       responseMappingTemplate: appsync.MappingTemplate.dynamoDbResultList(),
     });
 
-    // Investments resolvers (these will be enhanced by Lambda)
+    // Investments resolvers
     investmentsDataSource.createResolver("GetInvestmentResolver", {
       typeName: "Query",
       fieldName: "getInvestment",
@@ -321,5 +350,7 @@ export class ApiStack extends cdk.Stack {
       exportName: `PREPG3-${props.environmentName}-GraphQLApiArn`,
       description: "GraphQL API ARN",
     });
+
+    console.log('✅ AppSync API created with merged schema!');
   }
 }
