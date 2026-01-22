@@ -1,7 +1,7 @@
 // infrastructure/lib/stacks/auth-stack.ts
 import * as cdk from "aws-cdk-lib";
 import * as cognito from "aws-cdk-lib/aws-cognito";
-import * as iam from "aws-cdk-lib/aws-iam"; // ✅ ADD THIS IMPORT
+import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 import { getEnvironmentConfig } from "../config/environments";
 
@@ -111,19 +111,71 @@ export class AuthStack extends cdk.Stack {
       },
     });
 
-    // User Groups
+    // ===========================================
+    // USER GROUPS (ROLE HIERARCHY)
+    // ===========================================
+
+    // 🔴 SUPER ADMIN - Highest privilege (precedence 0)
+    // Full system access, can manage roles, delete data
+    new cognito.CfnUserPoolGroup(this, "SuperAdminGroup", {
+      userPoolId: this.userPool.userPoolId,
+      groupName: "SuperAdmin",
+      description: "Super administrators with full system access including role management",
+      precedence: 0, // Highest priority
+    });
+
+    // 🟠 ADMIN - High privilege (precedence 1)
+    // Can manage most operations but cannot delete data or manage roles
     new cognito.CfnUserPoolGroup(this, "AdminGroup", {
       userPoolId: this.userPool.userPoolId,
       groupName: "Admin",
-      description: "Administrators with full platform access",
+      description: "Administrators with elevated privileges",
       precedence: 1,
     });
 
-    new cognito.CfnUserPoolGroup(this, "InvestorGroup", {
+    // 🟡 COMPLIANCE - KYC/AML focused (precedence 2)
+    // Can approve/reject KYC, view investor details
+    new cognito.CfnUserPoolGroup(this, "ComplianceGroup", {
       userPoolId: this.userPool.userPoolId,
-      groupName: "Investor",
-      description: "Investors with limited access to their own data",
+      groupName: "Compliance",
+      description: "Compliance officers for KYC/AML verification",
+      precedence: 2,
+    });
+
+    // 🟢 PROPERTY MANAGER - Property operations (precedence 3)
+    // Can update properties, view investments
+    new cognito.CfnUserPoolGroup(this, "PropertyManagerGroup", {
+      userPoolId: this.userPool.userPoolId,
+      groupName: "PropertyManager",
+      description: "Property managers - can update properties and view investments",
+      precedence: 3,
+    });
+
+    // 🔵 SUPPORT - Read-only access (precedence 4)
+    // Customer support, read-only access to investor data
+    new cognito.CfnUserPoolGroup(this, "SupportGroup", {
+      userPoolId: this.userPool.userPoolId,
+      groupName: "Support",
+      description: "Customer support - read-only access",
+      precedence: 4,
+    });
+
+    // ⚪ VERIFIED INVESTORS - KYC approved (precedence 10)
+    // Can make investments
+    new cognito.CfnUserPoolGroup(this, "VerifiedInvestorsGroup", {
+      userPoolId: this.userPool.userPoolId,
+      groupName: "VerifiedInvestors",
+      description: "KYC-verified investors who can make investments",
       precedence: 10,
+    });
+
+    // ⚫ INVESTORS - Default user group (precedence 20)
+    // Standard investors, pending KYC verification
+    new cognito.CfnUserPoolGroup(this, "InvestorsGroup", {
+      userPoolId: this.userPool.userPoolId,
+      groupName: "Investors",
+      description: "Standard investors - own profile access only",
+      precedence: 20,
     });
 
     // Identity Pool for AWS SDK access
@@ -139,7 +191,7 @@ export class AuthStack extends cdk.Stack {
       ],
     });
 
-    // ✅ Create IAM role for authenticated users
+    // IAM role for authenticated users
     const authenticatedRole = new iam.Role(this, "CognitoAuthenticatedRole", {
       assumedBy: new iam.FederatedPrincipal(
         "cognito-identity.amazonaws.com",
@@ -156,7 +208,7 @@ export class AuthStack extends cdk.Stack {
       description: "Role for authenticated Cognito users",
     });
 
-    // ✅ Grant permissions to call AppSync
+    // Grant permissions to call AppSync
     authenticatedRole.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
@@ -165,7 +217,7 @@ export class AuthStack extends cdk.Stack {
       })
     );
 
-    // ✅ Attach role to Identity Pool
+    // Attach role to Identity Pool
     new cognito.CfnIdentityPoolRoleAttachment(
       this,
       "IdentityPoolRoleAttachment",
@@ -177,7 +229,10 @@ export class AuthStack extends cdk.Stack {
       }
     );
 
-    // Outputs
+    // ===========================================
+    // OUTPUTS
+    // ===========================================
+
     new cdk.CfnOutput(this, "UserPoolId", {
       value: this.userPool.userPoolId,
       exportName: `PREPG3-${props.environmentName}-UserPoolId`,
@@ -205,6 +260,20 @@ export class AuthStack extends cdk.Stack {
       value: authenticatedRole.roleArn,
       exportName: `PREPG3-${props.environmentName}-AuthenticatedRoleArn`,
       description: "IAM Role ARN for authenticated users",
+    });
+
+    // Output user groups for reference
+    new cdk.CfnOutput(this, "UserGroups", {
+      value: JSON.stringify({
+        superAdmin: "SuperAdmin",
+        admin: "Admin",
+        compliance: "Compliance",
+        propertyManager: "PropertyManager",
+        support: "Support",
+        verifiedInvestors: "VerifiedInvestors",
+        investors: "Investors",
+      }),
+      description: "Available user groups (roles)",
     });
   }
 }

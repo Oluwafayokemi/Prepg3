@@ -1,12 +1,46 @@
-'use client';
+// components/AdminDashboard.tsx
 
-import AdminLayout from '../../components/AdminLayout';
+import { useQuery } from '@apollo/client';
+import { gql } from '@apollo/client';
 
-export default function AdminDashboard() {
+const GET_MY_PERMISSIONS = gql`
+  query GetMyPermissions {
+    getMyPermissions {
+      role
+      canApproveKYC
+      canDeleteData
+      canManageRoles
+      canUpdateProperties
+    }
+  }
+`;
+
+export function AdminDashboard() {
+  const { data } = useQuery(GET_MY_PERMISSIONS);
+  const permissions = data?.getMyPermissions;
+
   return (
-    <AdminLayout>
+    <div>
       <h1>Admin Dashboard</h1>
-      <p>Overview of all investments and properties</p>
-    </AdminLayout>
+      
+      {/* Show based on permissions */}
+      {permissions?.canApproveKYC && (
+        <Link to="/admin/kyc">KYC Review Queue</Link>
+      )}
+
+      {permissions?.canUpdateProperties && (
+        <Link to="/admin/properties">Manage Properties</Link>
+      )}
+
+      {permissions?.canManageRoles && (
+        <Link to="/admin/users">Manage User Roles</Link>
+      )}
+
+      {permissions?.canDeleteData && (
+        <div className="text-red-600">
+          <Link to="/admin/dangerous">⚠️ Dangerous Operations</Link>
+        </div>
+      )}
+    </div>
   );
 }
