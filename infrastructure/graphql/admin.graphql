@@ -1,34 +1,25 @@
-# schema/admin.graphql
-# ADMIN OPERATIONS (Non-destructive)
-# Accessible by: Admin, Compliance, PropertyManager, Support
-# Operations that help manage the platform but don't delete data
-
-# ===========================================
-# DASHBOARD & STATS TYPES
-# ===========================================
-
 type AdminDashboard {
-  # Overview metrics
+  
   totalInvestors: Int!
   totalProperties: Int!
   totalCapitalRaised: Float!
   totalPortfolioValue: Float!
   averageROI: Float!
   
-  # Recent activity
+  
   recentInvestments: [Investment!]!
   recentTransactions: [Transaction!]!
   
-  # Property breakdown
+  
   propertiesByStatus: [PropertyStatusCount!]!
   
-  # Compliance alerts
+  
   pendingKYCReviews: Int!
   pendingAMLAlerts: Int!
   activePEPInvestors: Int!
   suspendedAccounts: Int!
   
-  # Financial overview
+  
   monthlyRevenue: Float!
   totalFees: Float!
   outstandingPayments: Float!
@@ -84,9 +75,9 @@ type FinancialStats {
   averageInvestmentSize: Float!
 }
 
-# ===========================================
-# COMPLIANCE TYPES
-# ===========================================
+
+
+
 
 type KYCReviewQueue {
   pending: [Investor!]!
@@ -106,9 +97,9 @@ type ComplianceStats {
   sanctionMatchesLast30Days: Int!
 }
 
-# ===========================================
-# AUDIT & ACTIVITY TYPES
-# ===========================================
+
+
+
 
 type AuditLog {
   id: ID!
@@ -148,9 +139,9 @@ type AdminActivityConnection {
   nextToken: String
 }
 
-# ===========================================
-# SYSTEM HEALTH
-# ===========================================
+
+
+
 
 type SystemHealth {
   status: SystemStatus!
@@ -163,52 +154,52 @@ type SystemHealth {
   lastChecked: AWSDateTime!
 }
 
-# ===========================================
-# ENUMS
-# ===========================================
+
+
+
 
 enum AuditAction {
-  # Investor actions
+  
   INVESTOR_CREATED
   INVESTOR_UPDATED
   INVESTOR_SUSPENDED
   INVESTOR_REACTIVATED
   INVESTOR_CLOSED
   
-  # KYC actions
+  
   KYC_SUBMITTED
   KYC_APPROVED
   KYC_REJECTED
   KYC_MORE_INFO_REQUESTED
   
-  # AML actions
+  
   AML_CHECK_RUN
   AML_ALERT_CREATED
   AML_ALERT_RESOLVED
   SANCTIONS_CHECK_RUN
   
-  # Security actions
+  
   PASSWORD_RESET
   EMAIL_CHANGED
   PHONE_CHANGED
   
-  # Financial actions
+  
   INVESTMENT_CREATED
   TRANSACTION_CREATED
   WITHDRAWAL_PROCESSED
   
-  # Property actions
+  
   PROPERTY_CREATED
   PROPERTY_UPDATED
   PROPERTY_SOLD
   
-  # Admin actions
+  
   ADMIN_LOGIN
   ADMIN_LOGOUT
   SETTINGS_CHANGED
   BULK_ACTION_PERFORMED
   
-  # Data actions
+  
   DATA_EXPORT
   DATA_IMPORT
   BACKUP_CREATED
@@ -255,9 +246,9 @@ enum ReportFormat {
   EXCEL
 }
 
-# ===========================================
-# INPUTS
-# ===========================================
+
+
+
 
 input AuditLogFilterInput {
   userId: ID
@@ -276,12 +267,12 @@ input AdminActivityFilterInput {
   endDate: AWSDateTime
 }
 
-# ===========================================
-# QUERIES
-# ===========================================
+
+
+
 
 extend type Query {
-  # Dashboard & Stats
+  
   getAdminDashboard: AdminDashboard!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
   
@@ -297,11 +288,11 @@ extend type Query {
   getComplianceStats: ComplianceStats!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin", "Compliance"])
   
-  # KYC Queue
+  
   getKYCReviewQueue: KYCReviewQueue!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin", "Compliance"])
   
-  # Audit Logs
+  
   listAuditLogs(
     filter: AuditLogFilterInput
     limit: Int
@@ -312,7 +303,7 @@ extend type Query {
   getAuditLog(id: ID!): AuditLog!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
   
-  # Admin Activity
+  
   listAdminActivity(
     filter: AdminActivityFilterInput
     limit: Int
@@ -320,11 +311,11 @@ extend type Query {
   ): AdminActivityConnection!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
   
-  # System Health
+  
   getSystemHealth: SystemHealth!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
   
-  # Reports
+  
   generateInvestorReport(
     startDate: AWSDate
     endDate: AWSDate
@@ -347,30 +338,30 @@ extend type Query {
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin", "Compliance"])
 }
 
-# ===========================================
-# MUTATIONS
-# ===========================================
+
+
+
 
 extend type Mutation {
-  # Bulk KYC Operations
+  
   bulkApproveKYC(investorIds: [ID!]!): BulkOperationResult!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin", "Compliance"])
   
   bulkRejectKYC(investorIds: [ID!]!, reason: String!): BulkOperationResult!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin", "Compliance"])
   
-  # Bulk Notifications
+  
   bulkSendNotification(
     investorIds: [ID!]!
     notification: SendNotificationInput!
   ): BulkOperationResult!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
   
-  # Account Suspension (Temporary - NOT deletion)
+  
   bulkSuspendAccounts(investorIds: [ID!]!, reason: String!): BulkOperationResult!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
   
-  # System Operations (Non-destructive)
+  
   triggerBackup: Boolean!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
   
@@ -380,7 +371,7 @@ extend type Mutation {
   syncData: Boolean!
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
   
-  # Audit Logging
+  
   logAuditEvent(
     action: AuditAction!
     entityType: String!
@@ -391,9 +382,9 @@ extend type Mutation {
     @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
 }
 
-# ===========================================
-# BULK OPERATION TYPES
-# ===========================================
+
+
+
 
 type BulkOperationResult {
   totalProcessed: Int!
@@ -407,16 +398,16 @@ type BulkOperationError {
   error: String!
 }
 
-# ===========================================
-# SUBSCRIPTIONS
-# ===========================================
+
+
+
 
 extend type Subscription {
-  # Real-time admin notifications
+  
   onAdminNotification: AdminNotification
     @aws_subscribe(mutations: ["logAuditEvent"])
   
-  # System health changes
+  
   onSystemHealthChanged: SystemHealth
     @aws_subscribe(mutations: ["triggerBackup", "clearCache"])
 }

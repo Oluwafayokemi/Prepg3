@@ -1,0 +1,252 @@
+# schema/notification.graphql
+# Notification Management
+# In-app notifications, email notifications, push notifications
+
+# ===========================================
+# NOTIFICATION TYPES
+# ===========================================
+
+type Notification {
+  id: ID!
+  investorId: ID!
+  
+  # Notification content
+  type: NotificationType!
+  title: String!
+  message: String!
+  priority: NotificationPriority!
+  
+  # Status
+  read: Boolean!
+  readAt: AWSDateTime
+  
+  # Actions
+  link: String # URL to navigate to when clicked
+  actionLabel: String # Button label (e.g., "View Property")
+  actionUrl: String # URL for action button
+  
+  # Metadata
+  relatedEntityType: String # PROPERTY, INVESTMENT, TRANSACTION, DOCUMENT
+  relatedEntityId: ID
+  metadata: AWSJSON
+  
+  # Timestamps
+  createdAt: AWSDateTime!
+  expiresAt: AWSDateTime # Auto-delete after this date
+  
+  # Channels
+  sentViaEmail: Boolean!
+  sentViaPush: Boolean!
+  emailSentAt: AWSDateTime
+  pushSentAt: AWSDateTime
+}
+
+type NotificationConnection {
+  notifications: [Notification!]!
+  nextToken: String
+  totalCount: Int
+  unreadCount: Int
+}
+
+type NotificationPreferences {
+  investorId: ID!
+  
+  # Email preferences
+  emailEnabled: Boolean!
+  emailInvestmentUpdates: Boolean!
+  emailPropertyUpdates: Boolean!
+  emailDividendPayments: Boolean!
+  emailKYCUpdates: Boolean!
+  emailMarketingMessages: Boolean!
+  
+  # Push notification preferences
+  pushEnabled: Boolean!
+  pushInvestmentUpdates: Boolean!
+  pushPropertyUpdates: Boolean!
+  pushDividendPayments: Boolean!
+  pushKYCUpdates: Boolean!
+  
+  # In-app preferences
+  inAppEnabled: Boolean!
+  
+  # Frequency
+  digestFrequency: DigestFrequency!
+  
+  updatedAt: AWSDateTime!
+}
+
+# ===========================================
+# ENUMS
+# ===========================================
+
+enum NotificationType {
+  # Investment related
+  INVESTMENT_CONFIRMED
+  INVESTMENT_FAILED
+  DIVIDEND_RECEIVED
+  PROPERTY_FUNDED
+  PROPERTY_SOLD
+  
+  # KYC related
+  KYC_APPROVED
+  KYC_REJECTED
+  KYC_MORE_INFO_REQUIRED
+  KYC_EXPIRING_SOON
+  
+  # Document related
+  DOCUMENT_UPLOADED
+  DOCUMENT_VERIFIED
+  DOCUMENT_REJECTED
+  
+  # Account related
+  ACCOUNT_VERIFIED
+  ACCOUNT_SUSPENDED
+  PASSWORD_CHANGED
+  EMAIL_CHANGED
+  
+  # Property updates
+  NEW_PROPERTY_AVAILABLE
+  PROPERTY_UPDATE
+  PROPERTY_VALUATION_UPDATED
+  
+  # Transaction updates
+  WITHDRAWAL_PROCESSED
+  PAYMENT_RECEIVED
+  REFUND_ISSUED
+  
+  # System notifications
+  SYSTEM_MAINTENANCE
+  NEW_FEATURE
+  SECURITY_ALERT
+  
+  # Other
+  GENERAL_ANNOUNCEMENT
+  PROMOTIONAL_MESSAGE
+}
+
+enum NotificationPriority {
+  LOW         # General updates, marketing
+  NORMAL      # Standard notifications
+  HIGH        # Important updates
+  URGENT      # Requires immediate attention
+}
+
+enum DigestFrequency {
+  IMMEDIATE   # Send immediately
+  HOURLY      # Batch hourly
+  DAILY       # Daily digest
+  WEEKLY      # Weekly digest
+  NEVER       # Never send (in-app only)
+}
+
+# ===========================================
+# INPUTS
+# ===========================================
+
+input SendNotificationInput {
+  investorId: ID!
+  type: NotificationType!
+  title: String!
+  message: String!
+  priority: NotificationPriority!
+  link: String
+  actionLabel: String
+  actionUrl: String
+  relatedEntityType: String
+  relatedEntityId: ID
+  sendViaEmail: Boolean
+  sendViaPush: Boolean
+  metadata: AWSJSON
+}
+
+input UpdateNotificationPreferencesInput {
+  emailEnabled: Boolean
+  emailInvestmentUpdates: Boolean
+  emailPropertyUpdates: Boolean
+  emailDividendPayments: Boolean
+  emailKYCUpdates: Boolean
+  emailMarketingMessages: Boolean
+  
+  pushEnabled: Boolean
+  pushInvestmentUpdates: Boolean
+  pushPropertyUpdates: Boolean
+  pushDividendPayments: Boolean
+  pushKYCUpdates: Boolean
+  
+  inAppEnabled: Boolean
+  digestFrequency: DigestFrequency
+}
+
+input ListNotificationsFilter {
+  type: NotificationType
+  priority: NotificationPriority
+  read: Boolean
+  relatedEntityType: String
+  relatedEntityId: ID
+}
+
+# ===========================================
+# QUERIES
+# ===========================================
+
+extend type Query {
+  # Get specific notification
+  getNotification(notificationId: ID!): Notification!
+  
+  # List user's notifications
+  listMyNotifications(
+    filter: ListNotificationsFilter
+    limit: Int
+    nextToken: String
+  ): NotificationConnection!
+  
+  # Get unread notification count
+  getUnreadNotificationCount: Int!
+  
+  # Get notification preferences
+  getMyNotificationPreferences: NotificationPreferences!
+}
+
+# ===========================================
+# MUTATIONS
+# ===========================================
+
+extend type Mutation {
+  # Mark notification as read
+  markNotificationAsRead(notificationId: ID!): Notification!
+  
+  # Mark all notifications as read
+  markAllNotificationsAsRead: Boolean!
+  
+  # Delete notification
+  deleteNotification(notificationId: ID!): Boolean!
+  
+  # Delete all read notifications
+  deleteReadNotifications: Boolean!
+  
+  # Update notification preferences
+  updateNotificationPreferences(
+    input: UpdateNotificationPreferencesInput!
+  ): NotificationPreferences!
+  
+  # ==========================================
+  # ADMIN MUTATIONS
+  # ==========================================
+  
+  # Send notification to specific user
+  sendNotification(input: SendNotificationInput!): Notification!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+  
+  # Send notification to multiple users (from admin.graphql bulk operations)
+  # bulkSendNotification already defined in admin.graphql
+}
+
+# ===========================================
+# SUBSCRIPTIONS
+# ===========================================
+
+extend type Subscription {
+  # Real-time notifications
+  onNewNotification(investorId: ID!): Notification
+    @aws_subscribe(mutations: ["sendNotification"])
+}

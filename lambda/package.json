@@ -16,15 +16,17 @@
     "@aws-sdk/client-dynamodb": "^3.650.0",
     "@aws-sdk/client-s3": "^3.650.0",
     "@aws-sdk/client-ses": "^3.650.0",
+    "@aws-sdk/client-sns": "^3.974.0",
     "@aws-sdk/lib-dynamodb": "^3.650.0",
     "@aws-sdk/s3-request-presigner": "^3.650.0",
+    "@mailchimp/mailchimp_marketing": "^3.0.80",
     "@onfido/api": "^5.5.0",
     "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",
     "@types/jest": "^29.5.12",
-    "@types/node": "^20.14.0",
+    "@types/node": "^20.19.30",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",

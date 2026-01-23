@@ -109,7 +109,7 @@ type DeletedRecords {
   transactions: Int!
   documents: Int!
   notifications: Int!
-  auditLogs: Boolean! # Kept for compliance
+  auditLogs: Boolean! 
 }
 
 input DeletePropertyInput {
@@ -127,7 +127,7 @@ input DeleteInvestmentInput {
 input DeleteUserInput {
   userId: ID!
   deleteInvestorData: Boolean!
-  transferInvestmentsTo: ID # Transfer to another user
+  transferInvestmentsTo: ID 
   confirmDangerous: Boolean!
   reason: String!
 }
@@ -167,7 +167,7 @@ type SystemOperation {
 }
 
 input DatabaseMaintenanceInput {
-  operation: String! # "VACUUM", "REINDEX", "OPTIMIZE"
+  operation: String! 
   tables: [String!]
   confirmDangerous: Boolean!
 }

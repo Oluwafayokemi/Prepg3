@@ -6,6 +6,7 @@ import { UnauthorizedError, NotFoundError } from "@shared/utils/errors";
 import type { AppSyncEvent } from "../../shared/types";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { v4 as uuidv4 } from "uuid";
+import { PermissionChecker } from "@shared/utils/permissions";
 
 const logger = new Logger("RejectKYC");
 const sesClient = new SESClient({});
@@ -27,19 +28,20 @@ export const requestMoreInfoHandler = async (event: AppSyncEvent) => {
 
     if (!isAdmin && !isCompliance) {
       throw new UnauthorizedError(
-        "Only admins or compliance officers can request more info"
+        "Only admins or compliance officers can request more info",
       );
     }
 
     const requestedBy =
-      event.identity?.claims?.email || event.identity?.claims?.sub;
+      PermissionChecker.getUserEmail(event) ||
+      PermissionChecker.getUserId(event);
 
     // Get investor
     const getResult = await docClient.send(
       new GetCommand({
         TableName: process.env.INVESTORS_TABLE!,
         Key: { id: investorId },
-      })
+      }),
     );
 
     if (!getResult.Item) {
@@ -67,7 +69,7 @@ export const requestMoreInfoHandler = async (event: AppSyncEvent) => {
           ":updatedBy": requestedBy,
         },
         ReturnValues: "ALL_NEW",
-      })
+      }),
     );
 
     logger.info("More info requested", { investorId, requestedBy });
@@ -88,7 +90,7 @@ export const requestMoreInfoHandler = async (event: AppSyncEvent) => {
       new PutCommand({
         TableName: process.env.NOTIFICATIONS_TABLE!,
         Item: notification,
-      })
+      }),
     );
 
     // Send email

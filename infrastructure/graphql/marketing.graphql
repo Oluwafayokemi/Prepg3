@@ -1,0 +1,247 @@
+# schema/marketing.graphql
+# Email Marketing & Newsletter Management
+
+# ===========================================
+# MARKETING TYPES
+# ===========================================
+
+type NewsletterSubscription {
+  email: String!
+  investorId: ID
+  firstName: String
+  lastName: String
+  subscribed: Boolean!
+  preferences: NewsletterPreferences!
+  subscribedAt: AWSDateTime!
+  unsubscribedAt: AWSDateTime
+  source: String # "platform", "landing_page", "referral"
+  mailchimpListId: String
+}
+
+type NewsletterPreferences {
+  propertyUpdates: Boolean!
+  investmentTips: Boolean!
+  monthlyNewsletter: Boolean!
+  marketInsights: Boolean!
+}
+
+type SubscribeNewsletterResponse {
+  success: Boolean!
+  email: String!
+  message: String!
+}
+
+type UnsubscribeNewsletterResponse {
+  success: Boolean!
+  email: String!
+  message: String!
+}
+
+type EmailCampaign {
+  id: ID!
+  title: String!
+  subject: String!
+  listId: String!
+  status: CampaignStatus!
+  scheduledAt: AWSDateTime
+  sentAt: AWSDateTime
+  recipientCount: Int
+  openRate: Float
+  clickRate: Float
+  createdBy: String!
+  createdAt: AWSDateTime!
+}
+
+type EmailCampaignConnection {
+  campaigns: [EmailCampaign!]!
+  nextToken: String
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+# ===========================================
+# INPUTS
+# ===========================================
+
+input SubscribeNewsletterInput {
+  email: String!
+  firstName: String
+  lastName: String
+  preferences: NewsletterPreferencesInput
+}
+
+input NewsletterPreferencesInput {
+  propertyUpdates: Boolean
+  investmentTips: Boolean
+  monthlyNewsletter: Boolean
+  marketInsights: Boolean
+}
+
+input UpdateNewsletterPreferencesInput {
+  propertyUpdates: Boolean
+  investmentTips: Boolean
+  monthlyNewsletter: Boolean
+  marketInsights: Boolean
+}
+
+input SendPropertyAlertInput {
+  propertyId: ID!
+  propertyName: String!
+  location: String!
+  expectedROI: Float!
+  minimumInvestment: Float!
+  imageUrl: String!
+  propertyUrl: String!
+}
+
+input CreateEmailCampaignInput {
+  title: String!
+  subject: String!
+  htmlContent: String!
+  listId: String!
+  scheduleAt: AWSDateTime
+}
+
+# ===========================================
+# QUERIES
+# ===========================================
+
+extend type Query {
+  # Get user's newsletter subscription status
+  getMyNewsletterSubscription: NewsletterSubscription
+  
+  # ==========================================
+  # ADMIN QUERIES
+  # ==========================================
+  
+  # List all email campaigns
+  listEmailCampaigns(
+    status: CampaignStatus
+    limit: Int
+    nextToken: String
+  ): EmailCampaignConnection!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+  
+  # Get campaign details
+  getEmailCampaign(campaignId: ID!): EmailCampaign!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+}
+
+# ===========================================
+# MUTATIONS
+# ===========================================
+
+extend type Mutation {
+  # Subscribe to newsletter (public - anyone can subscribe)
+  subscribeNewsletter(input: SubscribeNewsletterInput!): SubscribeNewsletterResponse!
+  
+  # Unsubscribe from newsletter
+  unsubscribeNewsletter(email: String!): UnsubscribeNewsletterResponse!
+  
+  # Update newsletter preferences
+  updateNewsletterPreferences(
+    input: UpdateNewsletterPreferencesInput!
+  ): NewsletterSubscription!
+  
+  # ==========================================
+  # ADMIN MUTATIONS
+  # ==========================================
+  
+  # Send property alert to newsletter subscribers
+  sendPropertyAlert(input: SendPropertyAlertInput!): SubscribeNewsletterResponse!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+  
+  # Create email campaign
+  createEmailCampaign(input: CreateEmailCampaignInput!): EmailCampaign!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+  
+  # Send email campaign
+  sendEmailCampaign(campaignId: ID!): EmailCampaign!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+  
+  # Cancel scheduled campaign
+  cancelEmailCampaign(campaignId: ID!): EmailCampaign!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+}
+
+# ===========================================
+# NOTES FOR DEVELOPERS
+# ===========================================
+
+"""
+EMAIL MARKETING STRATEGY:
+
+TWO SYSTEMS:
+1. Transactional Emails (AWS SES):
+   - KYC approved/rejected
+   - Investment confirmed
+   - Password reset
+   - Document verified
+   
+2. Marketing Emails (Mailchimp):
+   - Newsletter subscriptions
+   - Property announcements
+   - Monthly updates
+   - Investment tips
+
+MAILCHIMP LISTS (AUDIENCES):
+1. Newsletter Subscribers (main list)
+2. New Property Alerts
+3. Investment Tips
+4. VIP Investors (£100k+)
+
+MAILCHIMP TAGS:
+- verified (KYC approved)
+- active-investor (has investments)
+- high-net-worth (£100k+ invested)
+- professional-investor
+- interested-in-commercial
+- interested-in-residential
+
+AUTO-TAGGING:
+When investor:
+- Gets KYC approved → Add "verified" tag
+- Makes first investment → Add "active-investor" tag
+- Invests £100k+ → Add "high-net-worth" tag
+- Shows interest in commercial → Add "interested-in-commercial" tag
+
+NEWSLETTER FLOW:
+1. User subscribes (landing page or platform)
+2. Lambda subscribes to Mailchimp
+3. Saves subscription in DynamoDB
+4. User gets welcome email
+5. User preferences synced to Mailchimp tags
+
+PROPERTY ALERT FLOW:
+1. Admin lists new property
+2. Admin clicks "Send Property Alert"
+3. Lambda creates Mailchimp campaign
+4. Campaign sent to subscribers with "property-updates" tag
+5. Tracks opens/clicks in Mailchimp
+
+CAMPAIGN CREATION FLOW:
+1. Admin creates campaign (draft)
+2. Admin schedules or sends immediately
+3. Lambda creates campaign in Mailchimp
+4. Campaign status tracked in DynamoDB
+5. Stats synced from Mailchimp
+
+UNSUBSCRIBE FLOW:
+1. User clicks unsubscribe in email
+2. Mailchimp webhook triggers Lambda
+3. Lambda updates DynamoDB
+4. User marked as unsubscribed
+
+GDPR COMPLIANCE:
+✅ Double opt-in (Mailchimp handles)
+✅ Easy unsubscribe (in every email)
+✅ Preference management
+✅ Data export on request
+✅ Deletion on request
+"""

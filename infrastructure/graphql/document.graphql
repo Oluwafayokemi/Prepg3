@@ -1,0 +1,133 @@
+# schema/document.graphql
+# Document Management with Versioning & Soft Deletes
+# NO actual deletion - only replacement and withdrawal
+
+# ===========================================
+# DOCUMENT TYPES
+# ===========================================
+
+type Document {
+  id: ID!
+  version: Int!
+  investorId: ID!
+  
+  # File details
+  documentType: DocumentType!
+  fileName: String!
+  fileSize: Int!
+  mimeType: String!
+  s3Key: String!
+  s3Bucket: String!
+  
+  # Status & lifecycle
+  status: DocumentStatus!
+  isCurrent: String! # "CURRENT" or "HISTORICAL"
+  
+  # Versioning & replacement
+  replacesDocumentId: ID
+  replacesVersion: Int
+  replacementReason: String
+  supersededBy: ID
+  supersededAt: AWSDateTime
+  supersededReason: String
+  
+  # Soft delete
+  withdrawnAt: AWSDateTime
+  withdrawnBy: String
+  withdrawnReason: String
+  
+  # Metadata
+  description: String
+  relatedEntityType: String
+  relatedEntityId: ID
+  
+  # Timestamps
+  uploadedBy: String!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  uploadedAt: AWSDateTime
+  
+  # Verification (admin)
+  verifiedAt: AWSDateTime
+  verifiedBy: String
+  rejectedAt: AWSDateTime
+  rejectedBy: String
+  rejectionReason: String
+  
+  # Download URL (only returned when explicitly requested)
+  downloadUrl: String
+  downloadUrlExpiresAt: AWSDateTime
+}
+
+type DocumentConnection {
+  documents: [Document!]!
+  nextToken: String
+  totalCount: Int
+}
+
+type DocumentVersion {
+  version: Int!
+  fileName: String!
+  status: DocumentStatus!
+  uploadedAt: AWSDateTime
+  uploadedBy: String
+  verifiedAt: AWSDateTime
+  verifiedBy: String
+  supersededAt: AWSDateTime
+  supersededReason: String
+  withdrawnAt: AWSDateTime
+  withdrawnReason: String
+  isCurrent: Boolean!
+}
+
+type DocumentHistoryResponse {
+  documentId: ID!
+  currentVersion: Int!
+  totalVersions: Int!
+  timeline: [DocumentVersion!]!
+}
+
+# ===========================================
+# UPLOAD RESPONSES
+# ===========================================
+
+type UploadDocumentResponse {
+  documentId: ID!
+  uploadUrl: String!
+  expiresAt: AWSDateTime!
+  document: Document!
+}
+
+type ReplaceDocumentResponse {
+  documentId: ID!
+  uploadUrl: String!
+  expiresAt: AWSDateTime!
+  document: Document!
+  replacedDocument: ReplacedDocumentInfo!
+}
+
+type ReplacedDocumentInfo {
+  id: ID!
+  version: Int!
+  status: DocumentStatus!
+}
+
+type WithdrawDocumentResponse {
+  success: Boolean!
+  documentId: ID!
+  status: DocumentStatus!
+  message: String!
+}
+
+type ConfirmUploadResponse {
+  success: Boolean!
+  documentId: ID!
+  status: DocumentStatus!
+}
+
+type DeleteDocumentResponse {
+  success: Boolean!
+  documentId: ID!
+  message: String!
+}
+

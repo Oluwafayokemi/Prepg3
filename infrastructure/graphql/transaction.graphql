@@ -1,0 +1,219 @@
+# schema/transaction.graphql
+# Transaction Management
+# Tracks all financial transactions (investments, dividends, fees, withdrawals)
+
+# ===========================================
+# TRANSACTION TYPES
+# ===========================================
+
+type Transaction {
+  id: ID!
+  
+  # Relationships
+  investorId: ID!
+  investmentId: ID
+  propertyId: ID
+  
+  # Transaction details
+  type: TransactionType!
+  amount: Float!
+  currency: String! # GBP, USD, EUR
+  status: TransactionStatus!
+  
+  # Payment details
+  paymentMethod: PaymentMethod
+  paymentReference: String
+  paymentProcessor: String # Stripe, bank transfer, etc.
+  
+  # Timestamps
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  completedAt: AWSDateTime
+  failedAt: AWSDateTime
+  
+  # Additional info
+  description: String
+  metadata: AWSJSON
+  failureReason: String
+  
+  # Related entities (resolved)
+  investor: Investor
+  investment: Investment
+  property: Property
+}
+
+type TransactionConnection {
+  transactions: [Transaction!]!
+  nextToken: String
+  totalCount: Int
+  totalAmount: Float
+}
+
+type TransactionSummary {
+  totalInvestments: Float!
+  totalDividends: Float!
+  totalFees: Float!
+  totalWithdrawals: Float!
+  netAmount: Float!
+  transactionCount: Int!
+}
+
+# ===========================================
+# ENUMS
+# ===========================================
+
+enum TransactionType {
+  # Investment related
+  INVESTMENT          # Initial investment
+  ADDITIONAL_INVESTMENT # Additional investment in same property
+  
+  # Returns
+  DIVIDEND            # Dividend/rental income payment
+  CAPITAL_GAIN        # Capital gains distribution
+  
+  # Fees
+  PLATFORM_FEE        # Platform management fee
+  TRANSACTION_FEE     # Transaction processing fee
+  PERFORMANCE_FEE     # Performance fee
+  
+  # Withdrawals
+  WITHDRAWAL          # Investor withdrawal
+  REDEMPTION          # Property redemption
+  
+  # Other
+  REFUND              # Refund to investor
+  ADJUSTMENT          # Manual adjustment
+}
+
+enum TransactionStatus {
+  PENDING             # Transaction initiated, pending payment
+  PROCESSING          # Payment processing
+  COMPLETED           # Successfully completed
+  FAILED              # Payment failed
+  CANCELLED           # Cancelled by user or system
+  REFUNDED            # Refunded to user
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER       # Bank transfer
+  DEBIT_CARD          # Debit card
+  CREDIT_CARD         # Credit card
+  DIRECT_DEBIT        # Direct debit
+  OPEN_BANKING        # Open banking
+  WALLET              # Digital wallet
+  OTHER               # Other payment method
+}
+
+# ===========================================
+# INPUTS
+# ===========================================
+
+input CreateTransactionInput {
+  investmentId: ID
+  propertyId: ID
+  type: TransactionType!
+  amount: Float!
+  currency: String!
+  paymentMethod: PaymentMethod!
+  description: String
+  metadata: AWSJSON
+}
+
+input ListTransactionsFilter {
+  investorId: ID
+  investmentId: ID
+  propertyId: ID
+  type: TransactionType
+  status: TransactionStatus
+  startDate: AWSDateTime
+  endDate: AWSDateTime
+}
+
+# ===========================================
+# QUERIES
+# ===========================================
+
+extend type Query {
+  # Get specific transaction
+  getTransaction(transactionId: ID!): Transaction!
+  
+  # List user's own transactions
+  listMyTransactions(
+    filter: ListTransactionsFilter
+    limit: Int
+    nextToken: String
+  ): TransactionConnection!
+  
+  # Get user's transaction summary
+  getMyTransactionSummary(
+    startDate: AWSDateTime
+    endDate: AWSDateTime
+  ): TransactionSummary!
+  
+  # ==========================================
+  # ADMIN QUERIES
+  # ==========================================
+  
+  # List all transactions (admin only)
+  listAllTransactions(
+    filter: ListTransactionsFilter
+    limit: Int
+    nextToken: String
+  ): TransactionConnection!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+  
+  # Get transaction summary for investor (admin only)
+  getInvestorTransactionSummary(
+    investorId: ID!
+    startDate: AWSDateTime
+    endDate: AWSDateTime
+  ): TransactionSummary!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+}
+
+# ===========================================
+# MUTATIONS
+# ===========================================
+
+extend type Mutation {
+  # Create transaction (internal use - typically called by createInvestment)
+  createTransaction(input: CreateTransactionInput!): Transaction!
+  
+  # Cancel pending transaction
+  cancelTransaction(transactionId: ID!): Transaction!
+  
+  # ==========================================
+  # ADMIN MUTATIONS
+  # ==========================================
+  
+  # Process pending transaction (admin only)
+  processTransaction(transactionId: ID!): Transaction!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+  
+  # Mark transaction as completed (admin only)
+  completeTransaction(transactionId: ID!): Transaction!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+  
+  # Mark transaction as failed (admin only)
+  failTransaction(transactionId: ID!, reason: String!): Transaction!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+  
+  # Issue refund (admin only)
+  refundTransaction(transactionId: ID!, reason: String!): Transaction!
+    @aws_auth(cognito_groups: ["Admin", "SuperAdmin"])
+}
+
+# ===========================================
+# SUBSCRIPTIONS
+# ===========================================
+
+extend type Subscription {
+  # Real-time transaction updates
+  onTransactionStatusChanged(investorId: ID!): Transaction
+    @aws_subscribe(mutations: [
+      "processTransaction",
+      "completeTransaction",
+      "failTransaction"
+    ])
+}
+

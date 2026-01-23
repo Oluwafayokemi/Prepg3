@@ -12,24 +12,23 @@
     "dev:investor": "cd apps && npm run dev:investor",
     "dev:admin": "cd apps && npm run dev:admin",
     "dev:all": "cd apps && npm run dev:all",
-    
     "build:landing": "cd apps && npm run build:landing",
     "build:investor": "cd apps && npm run build:investor",
     "build:admin": "cd apps && npm run build:admin",
     "build:all": "cd apps && npm run build:all",
-    
     "start:landing": "cd apps && npm run start:landing",
     "start:investor": "cd apps && npm run start:investor",
     "start:admin": "cd apps && npm run start:admin",
-    
     "cdk:deploy": "cd infrastructure && npm run deploy",
     "cdk:destroy": "cd infrastructure && npm run destroy",
     "cdk:diff": "cd infrastructure && npm run diff",
-    
     "export-config": "cd infrastructure && ts-node ../scripts/export-aws-config.ts",
-    
     "install:apps": "cd apps && npm install",
     "install:infra": "cd infrastructure && npm install",
     "install:all": "npm run install:apps && npm run install:infra"
+  },
+  "devDependencies": {
+    "@types/mailchimp__mailchimp_marketing": "^3.0.22",
+    "@types/node": "^25.0.10"
   }
 }
