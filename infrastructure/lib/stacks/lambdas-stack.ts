@@ -7,6 +7,7 @@ import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as events from "aws-cdk-lib/aws-events";
 import * as targets from "aws-cdk-lib/aws-events-targets";
+import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import { Construct } from "constructs";
 import { ApiLambda } from "../constructs/api-lambda";
 import { LAMBDA_DEFAULTS } from "../config/constants";
@@ -22,6 +23,7 @@ interface LambdasStackProps extends cdk.StackProps {
     notifications: dynamodb.Table;
     developments: dynamodb.Table;
     audit?: dynamodb.Table;
+    emailSubscriptions?: dynamodb.Table;
   };
   buckets: {
     documents: s3.Bucket;
@@ -57,6 +59,18 @@ export class LambdasStack extends cdk.Stack {
     submitIdentityDocument: cdk.aws_lambda.Function;
     submitProofOfAddress: cdk.aws_lambda.Function;
     manageUserRoles: cdk.aws_lambda.Function;
+    // Newsletter (Visitors - Public)
+    subscribeNewsletter: cdk.aws_lambda.Function;
+
+    // Newsletter (Investors - Authenticated)
+    subscribeToNewsletter: cdk.aws_lambda.Function;
+    unsubscribeFromNewsletter: cdk.aws_lambda.Function;
+    updateNewsletterPreferences: cdk.aws_lambda.Function;
+    getMyNewsletterStatus: cdk.aws_lambda.Function;
+
+    // Marketing (Admin)
+    sendPropertyAlert: cdk.aws_lambda.Function;
+    syncInvestorToMailchimp: cdk.aws_lambda.Function;
   };
 
   constructor(scope: Construct, id: string, props: LambdasStackProps) {
@@ -115,6 +129,16 @@ export class LambdasStack extends cdk.Stack {
 
       // Audit
       AUDIT_TABLE: props.tables.audit?.tableName || "",
+    };
+
+    const newsletterEnv = {
+      ...commonEnv,
+      INVESTORS_TABLE: props.tables.investors.tableName,
+      EMAIL_SUBSCRIPTIONS_TABLE:
+        props.tables.emailSubscriptions?.tableName || "",
+      MAILCHIMP_API_KEY: process.env.MAILCHIMP_API_KEY!,
+      MAILCHIMP_SERVER_PREFIX: process.env.MAILCHIMP_SERVER_PREFIX!,
+      MAILCHIMP_NEWSLETTER_LIST_ID: process.env.MAILCHIMP_NEWSLETTER_LIST_ID!,
     };
 
     // ===========================================
@@ -457,6 +481,187 @@ export class LambdasStack extends cdk.Stack {
     );
 
     // ===========================================
+    // NEWSLETTER LAMBDAS (Visitors)
+    // ===========================================
+
+    // Subscribe Newsletter Lambda
+    const subscribeNewsletterLambda = new ApiLambda(
+      this,
+      "SubscribeNewsletter",
+      {
+        functionName: "subscribe-newsletter",
+        handler: "marketing/subscribe-newsletter/index.handler",
+        environmentName: props.environmentName,
+        api: props.api,
+        typeName: "Mutation",
+        fieldName: "subscribeNewsletter",
+        environment: newsletterEnv,
+        timeout: LAMBDA_DEFAULTS.TIMEOUT_SECONDS.SHORT,
+        memorySize: LAMBDA_DEFAULTS.MEMORY_MB.SMALL,
+      },
+    );
+
+    // Grant table access
+    subscribeNewsletterLambda.grantTableAccess(
+      props.tables.investors,
+      "readwrite",
+    );
+    if (props.tables.emailSubscriptions) {
+      subscribeNewsletterLambda.grantTableAccess(
+        props.tables.emailSubscriptions,
+        "readwrite",
+      );
+    }
+
+    // ===========================================
+    // NEWSLETTER LAMBDAS (INVESTORS)
+    // ===========================================
+
+    // Subscribe to Newsletter (Logged-in investors)
+    const subscribeToNewsletterLambda = new ApiLambda(
+      this,
+      "SubscribeToNewsletter",
+      {
+        functionName: "subscribe-to-newsletter",
+        handler: "investors/subscribe-to-newsletter/index.handler",
+        environmentName: props.environmentName,
+        api: props.api,
+        typeName: "Mutation",
+        fieldName: "subscribeToNewsletter",
+        environment: newsletterEnv,
+        timeout: LAMBDA_DEFAULTS.TIMEOUT_SECONDS.MEDIUM,
+        memorySize: LAMBDA_DEFAULTS.MEMORY_MB.SMALL,
+      },
+    );
+
+    subscribeToNewsletterLambda.grantTableAccess(
+      props.tables.investors,
+      "readwrite",
+    );
+    if (props.tables?.emailSubscriptions) {
+      subscribeToNewsletterLambda.grantTableAccess(
+        props.tables.emailSubscriptions,
+        "readwrite",
+      );
+    }
+
+    // Unsubscribe from Newsletter
+    const unsubscribeFromNewsletterLambda = new ApiLambda(
+      this,
+      "UnsubscribeFromNewsletter",
+      {
+        functionName: "unsubscribe-from-newsletter",
+        handler: "investors/unsubscribe-from-newsletter/index.handler",
+        environmentName: props.environmentName,
+        api: props.api,
+        typeName: "Mutation",
+        fieldName: "unsubscribeFromNewsletter",
+        environment: newsletterEnv,
+        timeout: LAMBDA_DEFAULTS.TIMEOUT_SECONDS.SHORT,
+        memorySize: LAMBDA_DEFAULTS.MEMORY_MB.SMALL,
+      },
+    );
+
+    unsubscribeFromNewsletterLambda.grantTableAccess(
+      props.tables.investors,
+      "readwrite",
+    );
+
+    // Update Newsletter Preferences
+    const updateNewsletterPreferencesLambda = new ApiLambda(
+      this,
+      "UpdateNewsletterPreferences",
+      {
+        functionName: "update-newsletter-preferences",
+        handler: "investors/update-newsletter-preferences/index.handler",
+        environmentName: props.environmentName,
+        api: props.api,
+        typeName: "Mutation",
+        fieldName: "updateNewsletterPreferences",
+        environment: newsletterEnv,
+        timeout: LAMBDA_DEFAULTS.TIMEOUT_SECONDS.SHORT,
+        memorySize: LAMBDA_DEFAULTS.MEMORY_MB.SMALL,
+      },
+    );
+
+    updateNewsletterPreferencesLambda.grantTableAccess(
+      props.tables.investors,
+      "readwrite",
+    );
+
+    // Get My Newsletter Status
+    const getMyNewsletterStatusLambda = new ApiLambda(
+      this,
+      "GetMyNewsletterStatus",
+      {
+        functionName: "get-my-newsletter-status",
+        handler: "investors/get-my-newsletter-status/index.handler",
+        environmentName: props.environmentName,
+        api: props.api,
+        typeName: "Query",
+        fieldName: "getMyNewsletterStatus",
+        environment: newsletterEnv,
+        timeout: LAMBDA_DEFAULTS.TIMEOUT_SECONDS.SHORT,
+        memorySize: LAMBDA_DEFAULTS.MEMORY_MB.SMALL,
+      },
+    );
+
+    getMyNewsletterStatusLambda.grantTableAccess(
+      props.tables.investors,
+      "read",
+    );
+
+    // ===========================================
+    // MARKETING LAMBDAS (ADMIN)
+    // ===========================================
+
+    // Send Property Alert
+    const sendPropertyAlertLambda = new ApiLambda(this, "SendPropertyAlert", {
+      functionName: "send-property-alert",
+      handler: "marketing/send-property-alert/index.handler",
+      environmentName: props.environmentName,
+      api: props.api,
+      typeName: "Mutation",
+      fieldName: "sendPropertyAlert",
+      environment: newsletterEnv,
+      timeout: LAMBDA_DEFAULTS.TIMEOUT_SECONDS.LONG,
+      memorySize: LAMBDA_DEFAULTS.MEMORY_MB.MEDIUM,
+    });
+
+    sendPropertyAlertLambda.grantTableAccess(props.tables.properties, "read");
+
+    // Sync Investor to Mailchimp (DynamoDB Stream trigger)
+    const syncInvestorToMailchimpLambda = new cdk.aws_lambda.Function(
+      this,
+      "SyncInvestorToMailchimp",
+      {
+        functionName: `prepg3-sync-investor-to-mailchimp-${props.environmentName}`,
+        runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
+        handler: "marketing/sync-investor-to-mailchimp/index.handler",
+        code: cdk.aws_lambda.Code.fromAsset("lambda"),
+        environment: newsletterEnv,
+        timeout: cdk.Duration.seconds(60),
+        memorySize: 256,
+      },
+    );
+
+    // Grant DynamoDB table access
+    props.tables.investors.grantReadData(syncInvestorToMailchimpLambda);
+
+    // Add DynamoDB stream trigger
+    syncInvestorToMailchimpLambda.addEventSource(
+      new lambdaEventSources.DynamoEventSource(
+        props.tables.investors,
+        {
+          startingPosition: cdk.aws_lambda.StartingPosition.LATEST,
+          batchSize: 10,
+          retryAttempts: 3,
+          bisectBatchOnError: true,
+        },
+      ),
+    );
+
+    // ===========================================
     // DEVELOPMENT UPDATE LAMBDAS
     // ===========================================
 
@@ -717,6 +922,13 @@ export class LambdasStack extends cdk.Stack {
       submitIdentityDocument: submitIdentityDocumentLambda.function,
       submitProofOfAddress: submitProofOfAddressLambda.function,
       manageUserRoles: manageUserRolesLambda.function,
+      subscribeNewsletter: subscribeNewsletterLambda.function,
+      subscribeToNewsletter: subscribeToNewsletterLambda.function,
+      unsubscribeFromNewsletter: unsubscribeFromNewsletterLambda.function,
+      updateNewsletterPreferences: updateNewsletterPreferencesLambda.function,
+      getMyNewsletterStatus: getMyNewsletterStatusLambda.function,
+      sendPropertyAlert: sendPropertyAlertLambda.function,
+      syncInvestorToMailchimp: syncInvestorToMailchimpLambda,
     };
 
     // ===========================================
@@ -741,6 +953,8 @@ export class LambdasStack extends cdk.Stack {
         admin: 6,
         userManagement: 1,
         scheduled: 2,
+        marketing: 1,
+        newsletter: 6,
       }),
       description: "Lambda functions by category",
     });

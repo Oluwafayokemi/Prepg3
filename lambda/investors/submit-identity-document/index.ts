@@ -106,7 +106,6 @@ export const handler = async (
       documents: {
         identityDocument: {
           type: input.documentType,
-          images: input.documentImages,
           documentNumber: input.documentNumber,
           expiryDate: input.expiryDate,
         },

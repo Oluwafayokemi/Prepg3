@@ -6,7 +6,7 @@ cd graphql
 echo "🧹 Cleaning GraphQL schemas..."
 
 # Backup files first
-for file in investor.graphql property.graphql admin.graphql super-admin.graphql notification.graphql transaction.graphql document.graphql; do
+for file in investor.graphql property.graphql admin.graphql super-admin.graphql notification.graphql transaction.graphql document.graphql marketing.graphql; do
   cp "$file" "$file.backup"
 done
 
@@ -18,6 +18,7 @@ perl -pi -e 's/#.*$//' super-admin.graphql
 perl -pi -e 's/#.*$//' notification.graphql
 perl -pi -e 's/#.*$//' transaction.graphql
 perl -pi -e 's/#.*$//' document.graphql
+perl -pi -e 's/#.*$//' marketing.graphql
 
 
 
@@ -26,7 +27,7 @@ echo "✅ Comments removed"
 # Verify
 echo ""
 echo "Checking for remaining comments:"
-if grep -q "#" investor.graphql property.graphql admin.graphql super-admin.graphql notification.graphql transaction.graphql document.graphql; then
+if grep -q "#" investor.graphql property.graphql admin.graphql super-admin.graphql notification.graphql transaction.graphql document.graphql marketing.graphql; then
   echo "❌ Some comments remain"
   grep -n "#" *.graphql | head -10
 else

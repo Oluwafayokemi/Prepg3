@@ -15,13 +15,11 @@ interface VerificationRequest {
   documents: {
     identityDocument: {
       type: string;
-      images: string[];
       documentNumber: string;
       expiryDate: string;
     };
     proofOfAddress: {
       type: string;
-      images: string[];
       documentDate: string;
     };
   };
@@ -35,6 +33,8 @@ interface VerificationResult {
   confidence?: number;
   reasons?: string[];
   reviewRequired: boolean;
+  applicantId?: string;
+  sdkToken?: string;
 }
 
 /**
@@ -99,7 +99,7 @@ export class KYCVerificationService {
 
   /**
    * PHASE 3: Automated verification with Onfido
-   * Most checks are automated, complex cases go to manual
+   * Returns SDK token for frontend document upload
    */
   private async automatedVerification(
     request: VerificationRequest,
@@ -123,34 +123,26 @@ export class KYCVerificationService {
         applicantId: applicant.data.id,
       });
 
-      // 2. Upload documents
-      // (In real implementation, documents would be uploaded via Onfido SDK on frontend)
-      // Here we're just creating the check
-
-      // 3. Create verification check
-      const check = await this.onfidoClient.createCheck({
+      // 2. Generate SDK token for frontend
+      const sdkToken = await this.onfidoClient.generateSdkToken({
         applicant_id: applicant.data.id,
-        report_names: [
-          "document", // ID verification
-          "facial_similarity_photo", // Selfie match
-          "watchlist_aml", // AML screening
-        ],
+        application_id: process.env.ONFIDO_APPLICATION_ID!,
       });
 
-      logger.info("Onfido check created", { checkId: check.data.id });
+      logger.info("SDK token generated for frontend upload");
 
-      // 4. Check is processing - webhook will notify when complete
+      // 3. Return token - frontend will upload documents and call createCheck
       return {
         status: "IN_PROGRESS",
         method: "AUTOMATED",
         provider: "ONFIDO",
-        checkId: check.data.id,
-        reviewRequired: false, // Unless check result is "consider"
+        applicantId: applicant.data.id,
+        sdkToken: sdkToken.data.token,
+        reviewRequired: false,
       };
     } catch (error) {
       logger.error("Onfido verification failed, falling back to manual", error);
 
-      // Fallback to manual if Onfido fails
       return {
         status: "PENDING",
         method: "MANUAL",
@@ -190,7 +182,10 @@ export class KYCVerificationService {
   ): boolean {
     // Rule 1: Only automate standard UK documents
     const supportedDocs = ["PASSPORT", "DRIVING_LICENSE"];
-    if (!supportedDocs.includes(request.documents.identityDocument.type)) {
+    if (
+      !request.documents?.identityDocument?.type ||
+      !supportedDocs.includes(request.documents.identityDocument.type)
+    ) {
       logger.info("Non-standard document - manual review");
       return false;
     }
@@ -203,15 +198,7 @@ export class KYCVerificationService {
       return false;
     }
 
-    // Rule 3: Clear images (check file sizes as proxy for quality)
-    // In real implementation, check image resolution/quality
-    const hasGoodImages = request.documents.identityDocument.images.length >= 2;
-    if (!hasGoodImages) {
-      logger.info("Insufficient images - manual review");
-      return false;
-    }
-
-    // Rule 4: During business hours (optional - avoid delays)
+    // Rule 4: During business hours (optional)
     const hour = new Date().getHours();
     const isBusinessHours = hour >= 9 && hour < 18;
     if (!isBusinessHours) {
@@ -219,10 +206,42 @@ export class KYCVerificationService {
       return false;
     }
 
-    // All checks passed - use automated
     return true;
   }
 
+  /**
+   * Create check after frontend completes document upload via SDK
+   * Called by separate API endpoint
+   */
+  async createCheck(applicantId: string): Promise<VerificationResult> {
+    if (!this.onfidoClient) {
+      throw new Error("Onfido not configured");
+    }
+
+    try {
+      const check = await this.onfidoClient.createCheck({
+        applicant_id: applicantId,
+        report_names: [
+          "document", // ID verification
+          "facial_similarity_photo", // Selfie match
+          "watchlist_aml", // AML screening
+        ],
+      });
+
+      logger.info("Onfido check created", { checkId: check.data.id });
+
+      return {
+        status: "IN_PROGRESS",
+        method: "AUTOMATED",
+        provider: "ONFIDO",
+        checkId: check.data.id,
+        reviewRequired: false,
+      };
+    } catch (error) {
+      logger.error("Failed to create Onfido check", error);
+      throw error;
+    }
+  }
   /**
    * Handle Onfido webhook callback
    */

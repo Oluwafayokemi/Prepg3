@@ -17,6 +17,7 @@ export class DatabaseStack extends cdk.Stack {
     documents: dynamodb.Table;
     notifications: dynamodb.Table;
     developments: dynamodb.Table;
+    emailSubscriptions: dynamodb.Table;
   };
 
   constructor(scope: Construct, id: string, props: DatabaseStackProps) {
@@ -41,21 +42,33 @@ export class DatabaseStack extends cdk.Stack {
     // Investors Table
     const investorsTable = new dynamodb.Table(this, "InvestorsTable", {
       tableName: `prepg3-investors-${props.environmentName}`,
-      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING }, ...commonTableProps,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "version", type: dynamodb.AttributeType.NUMBER },
+      ...commonTableProps,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
+    });
+
+    // GSI for current versions only
+    investorsTable.addGlobalSecondaryIndex({
+      indexName: "currentVersions",
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "isCurrent", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
     // GSI for email lookup
     investorsTable.addGlobalSecondaryIndex({
       indexName: "byEmail",
-      partitionKey: { name: "email", type: dynamodb.AttributeType.STRING }, ...commonTableProps,
+      partitionKey: { name: "email", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "version", type: dynamodb.AttributeType.NUMBER },
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
     // Properties Table
     const propertiesTable = new dynamodb.Table(this, "PropertiesTable", {
       tableName: `prepg3-properties-${props.environmentName}`,
-      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING }, ...commonTableProps,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      ...commonTableProps,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
@@ -70,8 +83,9 @@ export class DatabaseStack extends cdk.Stack {
     // Investments Table
     const investmentsTable = new dynamodb.Table(this, "InvestmentsTable", {
       tableName: `prepg3-investments-${props.environmentName}`,
-      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING }, ...commonTableProps,
-      sortKey: { name: "investorId", type: dynamodb.AttributeType.STRING }, ...commonTableProps,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "investorId", type: dynamodb.AttributeType.STRING },
+      ...commonTableProps,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
@@ -143,7 +157,8 @@ export class DatabaseStack extends cdk.Stack {
     // Notifications Table
     const notificationsTable = new dynamodb.Table(this, "NotificationsTable", {
       tableName: `prepg3-notifications-${props.environmentName}`,
-      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       pointInTimeRecovery: false,
       removalPolicy,
       timeToLiveAttribute: "ttl", // Auto-delete old notifications
@@ -172,6 +187,64 @@ export class DatabaseStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    // infrastructure/lib/stacks/database-stack.ts
+
+    // Table 1: Email Subscriptions (Visitors)
+    const emailSubscriptionsTable = new dynamodb.Table(
+      this,
+      "EmailSubscriptionsTable",
+      {
+        tableName: `prepg3-email-subscriptions-${props.environmentName}`,
+        partitionKey: { name: "email", type: dynamodb.AttributeType.STRING },
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        pointInTimeRecovery: true,
+        removalPolicy,
+        encryption: dynamodb.TableEncryption.AWS_MANAGED,
+      },
+    );
+
+    // GSI: Query by conversion status
+    emailSubscriptionsTable.addGlobalSecondaryIndex({
+      indexName: "byConversionStatus",
+      partitionKey: {
+        name: "convertedToInvestor",
+        type: dynamodb.AttributeType.STRING, // "true" or "false"
+      },
+      sortKey: {
+        name: "subscribedAt",
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI: Query by source
+    emailSubscriptionsTable.addGlobalSecondaryIndex({
+      indexName: "bySource",
+      partitionKey: {
+        name: "source",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "subscribedAt",
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI: Query by UTM campaign (marketing analytics)
+    emailSubscriptionsTable.addGlobalSecondaryIndex({
+      indexName: "byUTMCampaign",
+      partitionKey: {
+        name: "utmCampaign",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "subscribedAt",
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     this.tables = {
       investors: investorsTable,
       properties: propertiesTable,
@@ -180,6 +253,7 @@ export class DatabaseStack extends cdk.Stack {
       documents: documentsTable,
       notifications: notificationsTable,
       developments: developmentsTable,
+      emailSubscriptions: emailSubscriptionsTable,
     };
 
     // Outputs

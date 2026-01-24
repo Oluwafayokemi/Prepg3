@@ -1,4 +1,3 @@
-
 scalar AWSDate
 scalar AWSTime
 scalar AWSDateTime
@@ -9,14 +8,9 @@ scalar AWSURL
 scalar AWSPhone
 scalar AWSIPAddress
 
-
-
-
-
 type Investor {
   id: ID!
 
-  
   email: String!
   firstName: String!
   lastName: String!
@@ -25,18 +19,15 @@ type Investor {
   dateOfBirth: AWSDate
   nationalInsuranceNumber: String
 
-  
   phone: String
   mobilePhone: String
   workPhone: String
   preferredContactMethod: ContactMethod
 
-  
   address: Address
   mailingAddress: Address
   previousAddresses: [Address!]
 
-  
   employmentStatus: EmploymentStatus
   occupation: String
   employer: String
@@ -44,11 +35,9 @@ type Investor {
   sourceOfFunds: SourceOfFunds
   sourceOfWealth: String
 
-  
   bankAccounts: [BankAccount!]
   primaryBankAccountId: ID
 
-  
   investorType: InvestorType!
   investorCategory: InvestorCategory
   riskTolerance: RiskTolerance
@@ -58,29 +47,24 @@ type Investor {
   portfolioValue: Float!
   totalROI: Float!
 
-  
   nextOfKin: NextOfKin
   emergencyContact: EmergencyContact
 
-  
   taxResidency: String
   taxIdentificationNumber: String
   isFATCAReportable: Boolean
 
-  
   identityVerification: IdentityVerification
   proofOfAddress: ProofOfAddress
   kycStatus: KYCStatus!
   kycVerifiedDate: AWSDateTime
   kycExpiryDate: AWSDateTime
   kycRejectionReason: String
-  
-  
+
   amlCheckStatus: AMLStatus!
   amlCheckDate: AWSDateTime
   amlRiskLevel: RiskLevel
 
-  
   isPEP: Boolean
   pepDetails: String
   pepPosition: String
@@ -88,14 +72,18 @@ type Investor {
   sanctionsCheckStatus: SanctionsStatus
   sanctionsCheckDate: AWSDateTime
 
-  
   marketingConsent: Boolean!
   dataProcessingConsent: Boolean!
   termsAcceptedDate: AWSDateTime
   privacyPolicyAcceptedDate: AWSDateTime
   communicationPreferences: CommunicationPreferences
 
-  
+  newsletterSubscribed: Boolean!
+  newsletterSubscribedAt: AWSDateTime
+  newsletterUnsubscribedAt: AWSDateTime
+  newsletterPreferences: NewsletterPreferences
+  mailchimpSubscriberId: String
+
   accountStatus: AccountStatus!
   accountTier: AccountTier
   verificationLevel: VerificationLevel!
@@ -103,14 +91,12 @@ type Investor {
   phoneVerified: Boolean
   emailVerificationToken: String
 
-  
   investments: [Investment!]
   transactions: [Transaction!]
   documents: [Document!]
   notifications: [Notification!]
   amlAlerts: [AMLAlert!]
 
-  
   referralSource: String
   referredBy: ID
   notes: String
@@ -119,8 +105,7 @@ type Investor {
   createdAt: AWSDateTime!
   updatedAt: AWSDateTime!
   lastLoginAt: AWSDateTime
-  
-  
+
   version: Int
   isCurrent: String
   updatedBy: String
@@ -129,9 +114,12 @@ type Investor {
   previousVersion: Int
 }
 
-
-
-
+type NewsletterPreferences {
+  propertyUpdates: Boolean!
+  investmentTips: Boolean!
+  monthlyNewsletter: Boolean!
+  marketInsights: Boolean!
+}
 
 type Address {
   addressLine1: String!
@@ -210,10 +198,6 @@ type CommunicationPreferences {
   preferredLanguage: String!
 }
 
-
-
-
-
 type AMLAlert {
   id: ID!
   investorId: ID!
@@ -225,27 +209,20 @@ type AMLAlert {
   matchDetails: AWSJSON
   status: AlertStatus!
   riskScore: Float
-  
-  
+
   actionTaken: String
   actionDate: AWSDateTime
-  
-  
+
   reviewedBy: String
   reviewedAt: AWSDateTime
   reviewNotes: String
-  
-  
+
   resolution: AlertResolution
   resolutionNotes: String
-  
+
   createdAt: AWSDateTime!
   updatedAt: AWSDateTime!
 }
-
-
-
-
 
 type RegistrationResponse {
   investor: Investor!
@@ -275,10 +252,6 @@ type AMLCheckResponse {
   requiresReview: Boolean!
 }
 
-
-
-
-
 type InvestorDashboard {
   totalInvested: Float!
   portfolioValue: Float!
@@ -299,16 +272,11 @@ type KYCReviewQueue {
   totalCount: Int!
 }
 
-
-
-
-
 type InvestorVersion {
   id: ID!
   version: Int!
   isCurrent: Boolean!
-  
-  
+
   email: String!
   firstName: String!
   lastName: String!
@@ -316,8 +284,7 @@ type InvestorVersion {
   kycStatus: KYCStatus!
   accountStatus: AccountStatus!
   totalInvested: Float!
-  
-  
+
   updatedAt: AWSDateTime!
   updatedBy: String!
   changeReason: String
@@ -348,10 +315,6 @@ type InvestorVersionHistory {
   timeline: [VersionTimeline!]!
 }
 
-
-
-
-
 type InvestorConnection {
   items: [Investor!]!
   nextToken: String
@@ -365,10 +328,6 @@ type AMLAlertConnection {
   criticalCount: Int
   highCount: Int
 }
-
-
-
-
 
 enum ContactMethod {
   EMAIL
@@ -459,6 +418,13 @@ enum KYCStatus {
   EXPIRED
   REQUIRES_UPDATE
   MORE_INFO_REQUIRED
+}
+
+type NewsletterSubscriptionStatus {
+  subscribed: Boolean!
+  subscribedAt: AWSDateTime
+  preferences: NewsletterPreferences
+  email: String!
 }
 
 enum AMLStatus {
@@ -570,9 +536,12 @@ enum AlertResolution {
   REFERRED_TO_AUTHORITIES
 }
 
-
-
-
+input NewsletterPreferencesInput {
+  propertyUpdates: Boolean
+  investmentTips: Boolean
+  monthlyNewsletter: Boolean
+  marketInsights: Boolean
+}
 
 input RegisterInvestorInput {
   email: String!
@@ -602,67 +571,58 @@ input CompleteProfileInput {
 
 input UpdateInvestorInput {
   id: ID!
-  
-  
+
   firstName: String
   lastName: String
   middleName: String
   title: String
   dateOfBirth: AWSDate
-  
-  
+
   email: String
   phone: String
   mobilePhone: String
   workPhone: String
   preferredContactMethod: ContactMethod
-  
-  
+
   address: AddressInput
   mailingAddress: AddressInput
-  
-  
+
   employmentStatus: EmploymentStatus
   occupation: String
   employer: String
   annualIncome: IncomeRange
   sourceOfFunds: SourceOfFunds
   sourceOfWealth: String
-  
-  
+
   investorType: InvestorType
   investorCategory: InvestorCategory
   riskTolerance: RiskTolerance
   investmentObjectives: [String!]
   investmentExperience: InvestmentExperience
-  
-  
+
   taxResidency: String
   isFATCAReportable: Boolean
-  
-  
+
   kycStatus: KYCStatus
   amlCheckStatus: AMLStatus
   sanctionsCheckStatus: SanctionsStatus
-  
-  
+
   isPEP: Boolean
   pepDetails: String
   pepPosition: String
   pepCountry: String
-  
-  
+
   accountStatus: AccountStatus
   accountTier: AccountTier
-  
-  
+
+  newsletterSubscribed: Boolean
+  newsletterPreferences: NewsletterPreferencesInput
+
   communicationPreferences: CommunicationPreferencesInput
   marketingConsent: Boolean
-  
-  
+
   notes: String
-  
-  
+
   changeReason: String
 }
 
@@ -757,4 +717,22 @@ input ReviewAMLAlertInput {
   resolution: AlertResolution
   actionTaken: String
   reviewNotes: String
+}
+extend type Query {
+  
+  getMyNewsletterStatus: NewsletterSubscriptionStatus!
+}
+
+
+extend type Mutation {
+  
+  subscribeToNewsletter(
+    preferences: NewsletterPreferencesInput
+  ): NewsletterSubscriptionStatus!
+  
+  unsubscribeFromNewsletter: Boolean!
+  
+  updateNewsletterPreferences(
+    preferences: NewsletterPreferencesInput!
+  ): NewsletterSubscriptionStatus!
 }
